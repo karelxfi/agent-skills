@@ -154,7 +154,7 @@ node -e "const p = require('/path/to/.claude/data/protocols.json'); console.log(
 ║                                                              ║
 ║   CHAIN NAME VALIDATION REQUIRED                     ║
 ║                                                              ║
-║   DeFiLlama chains ≠ Subsquid Portal datasets               ║
+║   DeFiLlama chains ≠ SQD Portal datasets               ║
 ║                                                              ║
 ║   Using wrong name → 404 errors, wasted time                ║
 ║                                                              ║
@@ -215,7 +215,7 @@ polygon-mainnet
 
 **Example response**:
 ```
-Metis is not available on Subsquid Portal
+Metis is not available on SQD Portal
 
 Aave V3 is available on these Portal-supported chains:
   - Ethereum (ethereum-mainnet)

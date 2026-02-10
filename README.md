@@ -37,13 +37,16 @@ npx skills add subsquid-labs/agent-skills/squid-sdk --all
 
 ---
 
-### Portal (Coming Soon)
+### Portal (5 skills)
 
-Query and analyze blockchain data via SQD Portal.
+Query and analyze blockchain data across 225+ chains without infrastructure.
 
+**Install:**
 ```bash
 npx skills add subsquid-labs/agent-skills/portal --all
 ```
+
+[**See Portal skills →**](./portal/README.md)
 
 ---
 
@@ -59,6 +62,7 @@ npx skills add subsquid-labs/agent-skills --all
 
 - **SQD**: [sqd.dev](https://sqd.dev)
 - **Pipes SDK**: [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
+- **Squid SDK**: [https://github.com/subsquid/squid-sdk](https://github.com/subsquid/squid-sdk)
 - **SQD Documentation**: [beta.docs.sqd.dev](https://beta.docs.sqd.dev)
 - **Agent Skills Format**: [agentskills.io](https://agentskills.io/)
 

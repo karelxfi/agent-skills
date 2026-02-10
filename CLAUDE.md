@@ -444,7 +444,7 @@ grep "export const" template.config.ts
 
 ### Portal Dataset Names - Use Correct Formats
 
-**Rule:** Subsquid Portal dataset names ≠ DeFiLlama chain names. Always use correct Portal names.
+**Rule:** SQD Portal dataset names ≠ DeFiLlama chain names. Always use correct Portal names.
 
 **Common Mistakes:**
 - `datasets/ethereum` → `datasets/ethereum-mainnet`
