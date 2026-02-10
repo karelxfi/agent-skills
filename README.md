@@ -74,7 +74,7 @@ Each skill contains:
 - **Agent Skills Format**: [agentskills.io](https://agentskills.io/)
 - **ClickHouse MCP**: [https://github.com/ClickHouse/mcp-clickhouse](https://github.com/ClickHouse/mcp-clickhouse)
 - **ClickHouse Cloud MCP**: [clickhouse.com/docs/use-cases/AI/MCP/remote_mcp](https://clickhouse.com/docs/use-cases/AI/MCP/remote_mcp)
-- **Railway MCP**: [https://github.com/railway/mcp-server](https://github.com/railway/mcp-server)
+- **Railway MCP**: [https://github.com/railwayapp/railway-mcp-server](https://github.com/railwayapp/railway-mcp-server)
 
 ## License
 
