@@ -66,9 +66,9 @@ Each skill contains:
 - **Pipes SDK**: [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
 - **SQD Documentation**: [beta.docs.sqd.dev](https://beta.docs.sqd.dev)
 - **Agent Skills Format**: [agentskills.io](https://agentskills.io/)
-- **ClickHouse MCP**: [modelcontextprotocol.io/servers#clickhouse](https://modelcontextprotocol.io/servers#clickhouse)
+- **ClickHouse MCP**: [https://github.com/ClickHouse/mcp-clickhouse](https://github.com/ClickHouse/mcp-clickhouse)
 - **ClickHouse Cloud MCP**: [clickhouse.com/docs/use-cases/AI/MCP/remote_mcp](https://clickhouse.com/docs/use-cases/AI/MCP/remote_mcp)
-- **Railway MCP**: [modelcontextprotocol.io/servers#railway](https://modelcontextprotocol.io/servers#railway)
+- **Railway MCP**: [https://github.com/railway/mcp-server](https://github.com/railway/mcp-server)
 
 ## License
 
