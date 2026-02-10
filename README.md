@@ -34,6 +34,12 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 ## Installation
 
+**Install all skills at once:**
+```bash
+npx skills add subsquid-labs/agent-skills --all
+```
+
+**Or install selectively:**
 ```bash
 npx skills add subsquid-labs/agent-skills
 ```
