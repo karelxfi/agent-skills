@@ -165,7 +165,84 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
 
 ---
 
-### Example 3: Monitor Contract Deployments by Address
+### Example 3: Filter by ERC-20 Transfer Function
+
+**Use case:** Query only ERC-20 transfer function calls to USDC contract.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "transactions": [{
+    "to": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+    "sighash": ["0xa9059cbb"]
+  }],
+  "fields": {
+    "transaction": {
+      "hash": true,
+      "from": true,
+      "to": true,
+      "input": true,
+      "status": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contract:** USDC
+**Function:** `transfer(address,uint256)`
+**Sighash:** `0xa9059cbb`
+
+**Notes:**
+- Function signature filtering isolates specific contract interactions
+- `sighash` is the first 4 bytes of `keccak256("transfer(address,uint256)")`
+- Reduces result set to only transfer function calls
+- More efficient than filtering all transactions
+
+---
+
+### Example 4: Query Transactions to USDT Contract
+
+**Use case:** Retrieve all transactions sent to USDT contract with comprehensive metadata.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "transactions": [{
+    "to": ["0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "transaction": {
+      "hash": true,
+      "from": true,
+      "to": true,
+      "value": true,
+      "input": true,
+      "gasUsed": true,
+      "status": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contract:** Tether USD (USDT)
+**Notes:**
+- Including block fields enables temporal analysis
+- Captures all interaction types (transfers, approvals, etc.)
+- Useful for wallet activity tracking
+
+---
+
+### Example 5: Monitor Contract Deployments by Address
 
 **Use case:** Find all contracts deployed by a specific deployer address.
 
@@ -197,7 +274,7 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
 
 ---
 
-### Example 4: Track Failed Transactions
+### Example 6: Track Failed Transactions
 
 **Use case:** Find all failed transactions to a specific contract.
 
@@ -232,7 +309,7 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
 
 ---
 
-### Example 5: Multi-Function Call Tracking
+### Example 7: Multi-Function Call Tracking
 
 **Use case:** Track multiple function types on the same contract.
 
@@ -270,7 +347,7 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
 
 ---
 
-### Example 6: Incoming Transactions with Related Data
+### Example 8: Incoming Transactions with Related Data
 
 **Use case:** Track all transactions TO a contract with their logs and traces.
 

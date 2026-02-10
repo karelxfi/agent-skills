@@ -283,7 +283,221 @@ getDiscriminator('sharedAccountsRoute');
 
 ---
 
-### Example 6: Track Failed Instructions
+### Example 6: Query Orca Whirlpool Instructions
+
+**Use case:** Monitor all instructions from Orca Whirlpool program with block metadata.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** Orca Whirlpool
+**Notes:**
+- Retrieves all on-chain activity for the Whirlpool program
+- Block metadata enables temporal analysis
+- `transactionIndex` helps reconstruct execution order
+
+---
+
+### Example 7: Filter Orca Swaps by Discriminator
+
+**Use case:** Isolate specific swap instruction types using 8-byte discriminators.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
+    "d8": ["0xf8c69e91e17587c8"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "data": true,
+      "accounts": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** Orca Whirlpool
+**Function:** Swap instruction
+**Notes:**
+- Instruction discriminators are typically first 8 bytes of data
+- Enables granular filtering for specific operations
+- Reduces result volume for focused analysis
+
+---
+
+### Example 8: Filter Swaps by Specific Pool
+
+**Use case:** Isolate transactions for a particular trading pair (e.g., USDC/SOL pool).
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
+    "d8": ["0xf8c69e91e17587c8"],
+    "accounts": ["7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** Orca Whirlpool
+**Pool:** USDC/SOL pool address
+**Notes:**
+- Pool addresses are stable identifiers for specific trading pairs
+- Account filtering reduces data volume significantly
+- More efficient than protocol-wide queries
+
+---
+
+### Example 9: Track USDC Token Balance Changes
+
+**Use case:** Monitor USDC token balance changes across blocks.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "tokenBalance": {
+      "account": true,
+      "preMint": true,
+      "postMint": true,
+      "preAmount": true,
+      "postAmount": true,
+      "preOwner": true,
+      "postOwner": true
+    }
+  },
+  "tokenBalances": [{
+    "preMint": ["EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"]
+  }]
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Token:** USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
+**Notes:**
+- Use `preMint` filter to target specific token types
+- Compare `preAmount`/`postAmount` to identify transfers
+- Track ownership changes via `preOwner`/`postOwner` fields
+- Block metadata provides temporal context
+
+---
+
+### Example 10: Monitor Transactions by Fee Payer
+
+**Use case:** Track all transactions from a specific wallet address.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "fields": {
+    "transaction": {
+      "signatures": true,
+      "feePayer": true,
+      "err": true
+    }
+  },
+  "transactions": [{
+    "feePayer": ["9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"]
+  }]
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Notes:**
+- Filter arrays support multiple addresses
+- `err: null` indicates successful transaction
+- Requesting only necessary fields improves performance
+- Useful for wallet activity tracking
+
+---
+
+### Example 11: Track Program Deployments
+
+**Use case:** Monitor new program deployments using BPF Upgradeable Loader.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 270000044,
+  "toBlock": 270000047,
+  "instructions": [{
+    "programId": ["BPFLoaderUpgradeab1e11111111111111111111111"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "transaction": {
+      "signatures": true,
+      "feePayer": true
+    },
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** BPF Upgradeable Loader
+**Notes:**
+- Captures deployment activities by filtering BPF Loader instructions
+- First account typically represents the deployed program
+- Block metadata enables temporal tracking
+- Fee payer identifies deployer
+
+---
+
+### Example 12: Track Failed Instructions
 
 **Use case:** Find transactions with failed instructions.
 
