@@ -8,7 +8,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 ## Products
 
-### Pipes SDK (21 skills)
+### Pipes SDK (12 skills)
 
 Lightweight TypeScript framework for building blockchain indexers.
 
