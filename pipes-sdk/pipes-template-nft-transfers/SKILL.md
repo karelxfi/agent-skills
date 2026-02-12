@@ -404,9 +404,9 @@ WHERE contract_address = '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D'
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexer using this template
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize sync speed
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate indexed data
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
 - [pipes-template-dex-swaps](../pipes-template-dex-swaps/SKILL.md) - DEX template
-- [pipes-template-erc4626-vaults](../pipes-template-erc4626-vaults/SKILL.md) - Vault template
+- [pipes-template-lending-protocol](../pipes-template-lending-protocol/SKILL.md) - Lending template
 
 ## Additional Resources
 
@@ -414,6 +414,12 @@ WHERE contract_address = '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D'
 - **ERC721 Spec**: https://eips.ethereum.org/EIPS/eip-721
 - **OpenSea NFT API**: https://docs.opensea.io/reference/api-overview
 - **NFT Standards**: https://ethereum.org/en/developers/docs/standards/tokens/erc-721/
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick NFT indexing reference
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API for NFT events
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Supported NFT networks
 
 ## Version History
 

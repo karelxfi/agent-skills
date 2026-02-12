@@ -397,8 +397,13 @@ PARTITION BY toYYYYMM(block_timestamp)
 ## Related Skills
 
 - [pipes-abi](../pipes-abi/SKILL.md) - Fetch contract ABIs
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate data quality
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
 - [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - ClickHouse schema patterns
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Database design best practices
 
 ## Best Practices
 

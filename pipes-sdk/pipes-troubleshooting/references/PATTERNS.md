@@ -1,92 +1,81 @@
----
-name: pipes-patterns
-description: Blockchain indexing patterns and best practices for Pipes SDK. Covers EVM patterns, Solana patterns, troubleshooting guides, performance optimization, and production-grade implementations.
-metadata:
-  author: subsquid
-  version: "1.0.0"
-  category: documentation
----
+# Blockchain Indexing Patterns & Best Practices
 
-# Pipes: Patterns & Best Practices
+Advanced patterns, performance optimization, and troubleshooting for building production-grade blockchain indexers with Subsquid Pipes SDK.
 
-Advanced patterns, troubleshooting guides, and performance optimization for building production-grade blockchain indexers.
+## Overview
 
-## When to Use This Skill
+This document consolidates:
+- **Common Indexing Patterns** - Factory tracking, multi-event processing, aggregations
+- **Performance Optimization** - Throughput benchmarks and optimization techniques
+- **Error Handling** - Critical error patterns and solutions
+- **Production Best Practices** - Data quality, testing, deployment
 
-Use this skill when you need to:
+## When to Use This Reference
+
+Consult this documentation when you need to:
 - Implement specific indexing patterns (factory, multi-event, aggregations)
 - Optimize indexer performance
 - Troubleshoot common errors
 - Debug sync issues or missing data
 - Handle edge cases (proxy contracts, shared state)
 - Build production-grade indexers
-- Learn advanced techniques
 
-## Overview
+## Common Indexing Patterns
 
-This skill provides access to comprehensive pattern libraries and troubleshooting guides:
+### Basic Patterns
 
-1. **EVM Patterns** - 9+ validated patterns for Ethereum-based chains
-2. **Troubleshooting** - Complete error catalog with solutions
-3. **Performance** - Optimization techniques and benchmarks
-4. **Production Patterns** - Multi-protocol DEX indexing
+#### 1. Single Contract Event Tracking
+- Track specific events from known contract
+- Simplest pattern, minimal overhead
+- **Use when**: Known address, single event type
 
-## Pattern Categories
-
-### Basic Patterns (Start Here)
-
-1. **Single Contract Event Tracking**
-   - Track specific events from known contract
-   - Simplest pattern, minimal overhead
-   - When: Known address, single event type
-
-2. **Multiple Events from Single Contract**
-   - Track multiple event types (Deposit/Withdraw)
-   - Related events from same contract
-   - When: Need to process events differently
+#### 2. Multiple Events from Single Contract
+- Track multiple event types (Deposit/Withdraw)
+- Related events from same contract
+- **Use when**: Need to process events differently
 
 ### Intermediate Patterns
 
-3. **Factory Pattern with Pre-Indexing**
-   - Track dynamically deployed contracts
-   - Wildcard vs pre-indexed approaches
-   - When: Uniswap pools, protocol deployments
+#### 3. Factory Pattern with Pre-Indexing
+- Track dynamically deployed contracts
+- Wildcard vs pre-indexed approaches
+- **Use when**: Uniswap pools, protocol deployments
 
-4. **Parallel Event Decoding (pipeComposite)**
-   - Decode multiple independent event types
-   - Parallel processing
-   - When: Unrelated events, different contracts
+#### 4. Parallel Event Decoding (pipeComposite)
+- Decode multiple independent event types
+- Parallel processing
+- **Use when**: Unrelated events, different contracts
 
-5. **Event Parameter Filtering (Server-Side)**
-   - Filter by indexed parameters at Portal
-   - Dramatically reduce bandwidth
-   - When: High-volume contracts, known addresses
+#### 5. Event Parameter Filtering (Server-Side)
+- Filter by indexed parameters at Portal
+- Dramatically reduce bandwidth
+- **Use when**: High-volume contracts, known addresses
 
-6. **Factory Event Filtering**
-   - Filter factory creation events
-   - Limit downstream processing
-   - When: Only need subset of deployed contracts
+#### 6. Factory Event Filtering
+- Filter factory creation events
+- Limit downstream processing
+- **Use when**: Only need subset of deployed contracts
 
 ### Advanced Patterns
 
-7. **Multi-Stage Pipeline with Aggregations**
-   - Filter → Enrich → Aggregate → Persist
-   - Complex transformations
-   - When: Need reusable stages, complex logic
+#### 7. Multi-Stage Pipeline with Aggregations
+- Filter → Enrich → Aggregate → Persist
+- Complex transformations
+- **Use when**: Need reusable stages, complex logic
 
-8. **Custom Target Implementation**
-   - Write to custom format/storage
-   - When: JSON files, S3, custom database
+#### 8. Custom Target Implementation
+- Write to custom format/storage
+- **Use when**: JSON files, S3, custom database
 
-9. **Memory Target with Finalized/Unfinalized Tracking**
-   - In-memory storage with rollback handling
-   - When: Testing, small datasets, real-time UI
+#### 9. Memory Target with Finalized/Unfinalized Tracking
+- In-memory storage with rollback handling
+- **Use when**: Testing, small datasets, real-time UI
 
-10. **RPC Latency Monitoring**
-    - Compare Portal vs RPC performance
-    - When: Monitoring infrastructure
+#### 10. RPC Latency Monitoring
+- Compare Portal vs RPC performance
+- **Use when**: Monitoring infrastructure
 
-## Critical Error Patterns (Read First)
+## Critical Error Patterns
 
 ### 1. Missing range Parameter in evmDecoder
 
@@ -340,11 +329,6 @@ evmDecoder({
 
 **Symptoms**: Process exits with OOM error
 
-**Possible Causes**:
-- Memory target with large dataset
-- No batch processing
-- Memory leak
-
 **Solution**:
 ```typescript
 // Use database target instead of memory
@@ -360,22 +344,11 @@ for await (const { data } of stream) {
 
 **Symptoms**: Pipeline takes hours for small dataset
 
-**Possible Causes**:
-- No server-side filtering
-- Too many transformation stages
-- Individual database inserts
-- Wrong database configuration
-
 **Solution**: Apply optimization techniques from Performance section
 
 ### Issue 4: Data Missing After Restart
 
 **Symptoms**: Pipeline restarts from beginning
-
-**Possible Causes**:
-- No cursor persistence
-- Cursor file corrupted
-- No resume logic
 
 **Solution**: Implement cursor saving in custom target
 
@@ -404,145 +377,141 @@ npx @subsquid/evm-typegen@latest src/contracts \
 
 ## Pattern Selection Guide
 
-### When to Use Each Pattern
-
-**Single Contract Event Tracking**:
+### Single Contract Event Tracking
+**Use when**:
 - Known contract address
 - Single event type
 - Simple transformations
-- Factory-deployed contracts
-- Multiple unrelated events
 
-**Factory Pattern**:
+### Factory Pattern
+**Use when**:
 - Dynamically deployed contracts
 - Need all historical deployments
 - Known contract list
-- Single contract
 
-**Parallel Decoding (pipeComposite)**:
+### Parallel Decoding (pipeComposite)
+**Use when**:
 - Multiple independent event types
 - Different contracts
 - Want parallel processing
+
+**DON'T use when**:
 - Events depend on each other
 - Single contract
 
-**Multi-Stage Pipeline**:
+### Multi-Stage Pipeline
+**Use when**:
 - Complex transformations
 - Multiple data formats needed
 - Reusable transformation logic
+
+**DON'T use when**:
 - Simple event → database mapping
 - Performance critical
 
-**Parameter Filtering**:
+### Parameter Filtering
+**Use when**:
 - Known addresses to track
 - High-volume contracts
 - Indexed parameters available
+
+**DON'T use when**:
 - Need all events anyway
 - Non-indexed parameters
 
-**Custom Target**:
+### Custom Target
+**Use when**:
 - Custom data format (JSON, CSV, Parquet)
 - Custom storage (S3, GCS, IPFS)
 - Custom database not supported
+
+**DON'T use when**:
 - ClickHouse (use clickhouseTarget)
 - PostgreSQL (use drizzleTarget)
 
-**Memory Target**:
+### Memory Target
+**Use when**:
 - Testing/development
 - Small datasets (< 10M records)
 - No persistence needed
+
+**DON'T use when**:
 - Large datasets
 - Need persistence across restarts
 
-## Available Reference Documents
+## Production Best Practices
 
-All reference documents are in the `references/` directory:
+### 1. Error Prevention
 
-1. **EVM_PATTERNS.md**
-   - 9+ validated EVM indexing patterns
-   - Complete code examples
-   - When to use each pattern
-   - Pattern comparison table
-   - Production-grade patterns reference
+- Always include `range` in `evmDecoder`
+- Always use `.map()` on named event arrays
+- Always include `format: "JSONEachRow"` in ClickHouse inserts
+- Always convert BigInt to string before JSON serialization
+- Always clear sync table when starting new indexer
 
-2. **TROUBLESHOOTING.md**
-   - Complete error catalog
-   - Root cause analysis
-   - Step-by-step solutions
-   - Prevention strategies
-   - Common issues and resolutions
+### 2. Performance Optimization
 
-3. **PERFORMANCE.md**
-   - Throughput benchmarks
-   - Memory usage patterns
-   - Optimization techniques
-   - Profiling guide
-   - High-volume chain optimization
+- Use server-side parameter filtering for high-volume contracts
+- Minimize transformation stages (1-2 max)
+- Batch database inserts
+- Monitor memory usage (< 500 MB)
+- Test with small ranges before full deployment
 
-4. **DEX_DATA_PIPES_PATTERNS.md** (if available)
-   - Production DEX indexing patterns
-   - Multi-protocol decoder architecture
-   - Event normalization converters
-   - Pool metadata caching
-   - ClickHouse materialized views
+### 3. Data Quality
 
-5. **SOLANA_PATTERNS.md** (if available)
-   - Solana-specific patterns
-   - Instruction discriminators
-   - Account data handling
+- Verify data within 30 seconds of starting
+- Check for NULL values in critical fields
+- Validate addresses, amounts, timestamps
+- Monitor row count increasing over time
+- Implement fork handler for rollback protection
 
-## How to Access Documentation
+### 4. Debugging Workflow
 
-```bash
-# Read EVM patterns
-cat references/EVM_PATTERNS.md
+1. Check logs for error messages
+2. Enable profiling to measure performance
+3. Test with small range (100 blocks)
+4. Verify data in database with SQL queries
+5. Review TROUBLESHOOTING.md for matching pattern
 
-# Read troubleshooting guide
-cat references/TROUBLESHOOTING.md
+## Database Comparison: ClickHouse vs PostgreSQL
 
-# Read performance guide
-cat references/PERFORMANCE.md
-```
+### ClickHouse (Recommended for Analytics)
 
-Or use Claude Code's Read tool:
-```
-Read: agent-skills/skills/pipes-patterns/references/EVM_PATTERNS.md
-```
+**Pros**:
+- 5-10x faster for analytical queries
+- Efficient columnar storage
+- Excellent for time-series data
+- Better compression (smaller storage)
 
-## Pattern Workflow
+**Cons**:
+- No strong ACID transactions
+- Limited UPDATE/DELETE support
+- Less familiar for web developers
 
-### For New Implementations
+**Best for**:
+- Analytics dashboards
+- Historical data analysis
+- High-volume event streams
+- Aggregation-heavy queries
 
-1. **Start Simple**: Begin with Pattern 1 (Single Contract)
-2. **Test with Recent Blocks**: Use last 1-2 weeks for faster iteration
-3. **Verify Data**: Check within 30 seconds of starting
-4. **Optimize**: Apply parameter filtering if high-volume
-5. **Scale**: Expand to full block range once validated
+### PostgreSQL (Recommended for Relational)
 
-### For Troubleshooting
+**Pros**:
+- ACID transactions
+- Rich query capabilities (JOINs, subqueries)
+- More familiar to developers
+- Better tooling ecosystem
 
-1. **Check Logs**: Look for error messages
-2. **Enable Profiling**: Measure performance bottlenecks
-3. **Test Small Range**: Isolate issue with 100 blocks
-4. **Verify Data**: SQL queries to check database
-5. **Review TROUBLESHOOTING.md**: Find matching error pattern
+**Cons**:
+- Slower for large analytical queries
+- Higher storage requirements
+- More expensive to scale
 
-### For Performance Issues
-
-1. **Benchmark**: Compare against reference values
-2. **Profile**: Enable profiling to identify bottleneck
-3. **Check Filtering**: Are you fetching unnecessary data?
-4. **Count Stages**: Can you combine transformation pipes?
-5. **Review PERFORMANCE.md**: Apply optimization techniques
-
-## Related Skills
-
-- [pipes-workflow](../pipes-workflow/SKILL.md) - Core indexer workflow (Steps 1-7)
-- [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Project generation
-- [pipes-validation](../pipes-validation/SKILL.md) - Data verification
-- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Debugging guide
-- [pipes-deployment](../pipes-deployment/SKILL.md) - Deployment guides
-- [pipes-performance](../pipes-performance/SKILL.md) - Performance agent
+**Best for**:
+- Relational data models
+- Transactional workloads
+- Complex queries with JOINs
+- Web application backends
 
 ## Key Pattern Principles
 
@@ -609,61 +578,32 @@ format: "JSONEachRow"
 // Use implementation ABI, not proxy ABI
 ```
 
-## Production Best Practices
+## Detailed Reference Documents
 
-### 1. Error Prevention
+For comprehensive examples and code, refer to these files in the pipes-patterns skill:
 
-- Always include `range` in `evmDecoder`
-- Always use `.map()` on named event arrays
-- Always include `format: "JSONEachRow"` in ClickHouse inserts
-- Always convert BigInt to string before JSON serialization
-- Always clear sync table when starting new indexer
+1. **EVM_PATTERNS.md** - 9+ validated EVM indexing patterns with complete code examples
+2. **TROUBLESHOOTING.md** - Complete error catalog with step-by-step solutions
+3. **PERFORMANCE.md** - Detailed throughput benchmarks and profiling guide
+4. **DEX_DATA_PIPES_PATTERNS.md** - Production DEX indexing patterns
+5. **SOLANA_PATTERNS.md** - Solana-specific patterns and instruction discriminators
 
-### 2. Performance Optimization
-
-- Use server-side parameter filtering for high-volume contracts
-- Minimize transformation stages (1-2 max)
-- Batch database inserts
-- Monitor memory usage (< 500 MB)
-- Test with small ranges before full deployment
-
-### 3. Data Quality
-
-- Verify data within 30 seconds of starting
-- Check for NULL values in critical fields
-- Validate addresses, amounts, timestamps
-- Monitor row count increasing over time
-- Implement fork handler for rollback protection
-
-### 4. Debugging Workflow
-
-1. Check logs for error messages
-2. Enable profiling to measure performance
-3. Test with small range (100 blocks)
-4. Verify data in database with SQL queries
-5. Review TROUBLESHOOTING.md for matching pattern
+Access via:
+```bash
+cat pipes-sdk/pipes-patterns/references/EVM_PATTERNS.md
+```
 
 ## Key Takeaways
 
-1. **Start with proven patterns** - Use validated patterns from EVM_PATTERNS.md
-2. **Read TROUBLESHOOTING first** - Most errors are documented with solutions
+1. **Start with proven patterns** - Use validated patterns from reference docs
+2. **Read error catalog first** - Most errors are documented with solutions
 3. **Optimize early** - Use parameter filtering from the start
 4. **Test small** - Always test with recent blocks first
 5. **Verify immediately** - Check data within 30 seconds
 6. **Monitor continuously** - Use profiling and metrics in production
 
-## Documentation Hierarchy
+## Related Documentation
 
-```
-pipes-patterns (THIS SKILL)          ← Patterns & troubleshooting
-    ├── references/EVM_PATTERNS.md        ← 9+ validated patterns
-    ├── references/TROUBLESHOOTING.md     ← Complete error catalog
-    ├── references/PERFORMANCE.md         ← Optimization guide
-    └── references/DEX_DATA_PIPES_PATTERNS.md ← Production patterns
-
-pipes-workflow                       ← Core indexer workflow
-pipes-deployment                     ← Deployment guides
-pipes-troubleshooting               ← Debugging agent
-```
-
-Use pipes-workflow to build, then this skill to optimize and troubleshoot.
+- RESEARCH_CHECKLIST.md - Protocol research workflow
+- ENVIRONMENT_SETUP.md - Development prerequisites
+- DEPLOYMENT_OPTIONS.md - Production deployment strategies

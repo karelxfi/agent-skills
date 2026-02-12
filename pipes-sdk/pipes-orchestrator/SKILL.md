@@ -192,6 +192,105 @@ Use Task tool with subagent_type="data-validator"
 
 **Note**: data-validator can run proactively after indexer completes
 
+## Pipes Indexer Workflow (7 Steps)
+
+**Following this workflow prevents 60-70% of common indexer errors.**
+
+### Step 1: Environment Setup
+- Install Node.js 18+, Bun, Docker
+- Start ClickHouse or PostgreSQL container
+- Verify npm/npx availability for Pipes CLI
+
+### Step 2: Project Generation (NEVER MANUAL)
+**ALWAYS use Pipes CLI** - never manually create files!
+
+```bash
+npx @iankressin/pipes-cli@latest init --config '{
+  "projectFolder": "/path/to/indexer",
+  "packageManager": "bun",
+  "networkType": "evm",
+  "network": "ethereum-mainnet",
+  "templates": [{"templateId": "uniswapV3Swaps"}],
+  "sink": "clickhouse"
+}'
+```
+
+**Why**: CLI ensures correct dependencies, configuration, and structure.
+
+**Tip**: Run `npx @iankressin/pipes-cli@latest init --schema` to see all available templates.
+
+### Step 3: Contract Discovery
+**Check local registry FIRST**, then web search:
+
+```bash
+# 1. Check contracts-registry-llm (addybook.xyz)
+WebFetch({
+  url: "https://raw.githubusercontent.com/karelxfi/contracts-registry-llm/main/data/generated/indexes/by-address.json",
+  prompt: "Find {protocol} addresses on {chain}"
+})
+
+# 2. ONLY THEN: Web search if not found
+```
+
+### Step 4: ABI Fetching
+- Use pipes-abi skill or abi-manager agent
+- Verify events match what you need to track
+- Generate TypeScript types automatically
+
+### Step 5: Schema Design
+- Use pipes-schema-design skill for optimal structure
+- ClickHouse: Consider ORDER BY for query patterns
+- PostgreSQL: Add indexes for foreign keys
+
+### Step 6: Implementation
+- Customize the generated transformer
+- Add filters (use event parameter filtering for performance!)
+- Test with recent blocks first (last 1-2 weeks)
+
+### Step 7: Validation (MANDATORY)
+**MUST verify before declaring success:**
+
+```bash
+# 1. Start indexer
+bun run dev
+
+# 2. Verify start block (within 30 seconds)
+tail -f indexer.log
+# Should say "Start indexing from X" NOT "Resuming from Y"
+
+# 3. Wait 30 seconds, check for data
+docker exec clickhouse clickhouse-client --password=default \
+  --query "SELECT COUNT(*) FROM pipes.my_table"
+# Count MUST be > 0
+
+# 4. Inspect sample data
+docker exec clickhouse clickhouse-client --password=default \
+  --query "SELECT * FROM pipes.my_table LIMIT 3 FORMAT Vertical"
+# Verify: addresses valid, amounts reasonable, timestamps correct
+
+# 5. Wait another 30 seconds, verify count increasing
+docker exec clickhouse clickhouse-client --password=default \
+  --query "SELECT COUNT(*) FROM pipes.my_table"
+# Count should have increased
+```
+
+### Key Workflow Principles
+
+**Principle 1**: NEVER skip workflow steps - each builds on the previous
+
+**Principle 2**: Use provided tools (CLI, skills) - don't create files manually
+
+**Principle 3**: Test early with recent blocks - don't wait hours to verify
+
+**Principle 4**: Validate before claiming success - "syncing" ≠ "working correctly"
+
+### Common Workflow Violations (DON'T DO)
+
+**Violation 1**: Manual file creation (bypasses safety checks)
+**Violation 2**: Skipping contract discovery (local registry has verified data)
+**Violation 3**: Not testing with recent blocks (takes hours to see results)
+**Violation 4**: Declaring success without data verification
+
 ### Workflow Enforcement (MANDATORY)
 
 Before routing to ANY agent, verify prerequisites are met:
@@ -317,11 +416,26 @@ Please generate TypeScript types and identify all events.`
 ## Related Skills
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create new indexer projects
-- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Diagnose and fix errors
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Diagnose and fix errors (includes validation)
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize sync performance
 - [pipes-abi](../pipes-abi/SKILL.md) - Fetch contract ABIs
 - [pipes-schema-design](../pipes-schema-design/SKILL.md) - Design database schemas
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate indexed data
+
+## Related Documentation
+
+### Local References
+- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - Indexing patterns and best practices
+- [RESEARCH_CHECKLIST.md](../pipes-abi/references/RESEARCH_CHECKLIST.md) - Protocol research workflow
+- [ENVIRONMENT_SETUP.md](../pipes-new-indexer/references/ENVIRONMENT_SETUP.md) - Development prerequisites
+- [DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md) - Production deployment
+
+### Official Subsquid Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference optimized for LLMs
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete documentation in LLM-friendly format
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Pipes SDK guide
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API specification for EVM chains
+- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/files/solana-openapi.yaml)** - Portal API specification for Solana
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported blockchain networks
 
 ## Performance Notes
 

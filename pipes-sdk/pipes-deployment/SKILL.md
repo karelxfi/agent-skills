@@ -484,12 +484,12 @@ Read: agent-skills/skills/pipes-deployment/references/DEPLOYMENT_AGENTS.md
 
 ## Related Skills
 
-- [pipes-workflow](../pipes-workflow/SKILL.md) - Core indexer workflow (Steps 1-7)
+- See pipes-orchestrator for workflow guidance - Core indexer workflow (Steps 1-7)
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Project generation
 - [pipes-validation](../pipes-validation/SKILL.md) - Post-deployment validation
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Debugging deployments
 - [pipes-performance](../pipes-performance/SKILL.md) - Performance optimization
-- [pipes-patterns](../pipes-patterns/SKILL.md) - Implementation patterns
+- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - Implementation patterns
 
 ## Cost Considerations
 
@@ -538,14 +538,29 @@ Railway + ClickHouse is competitive for blockchain indexing.
 
 ```
 pipes-deployment (THIS SKILL)        ← Deployment guides
-    ├── references/DEPLOYMENT_AGENTS.md      ← All options overview
-    ├── references/RAILWAY_DEPLOYMENT_SUMMARY.md  ← Railway complete guide
-    ├── references/CLICKHOUSE_MCP_USAGE.md        ← ClickHouse MCP
-    └── references/RAILWAY_MCP_USAGE.md           ← Railway MCP
+    ├── references/DEPLOYMENT_OPTIONS.md         ← Platform comparison (NEW)
+    ├── references/DEPLOYMENT_AGENTS.md          ← All options overview
+    ├── references/RAILWAY_DEPLOYMENT_SUMMARY.md ← Railway complete guide
+    ├── references/CLICKHOUSE_MCP_USAGE.md       ← ClickHouse MCP
+    └── references/RAILWAY_MCP_USAGE.md          ← Railway MCP
 
-pipes-workflow                       ← Core indexer workflow
-pipes-patterns                       ← Implementation patterns
-pipes-troubleshooting               ← Debugging guide
+pipes-orchestrator                   ← Includes core workflow
+pipes-troubleshooting               ← Debugging guide (includes patterns)
 ```
 
-Start with pipes-workflow, then use this skill for deployment.
+### Quick Access
+
+```bash
+# Read deployment options comparison
+cat pipes-sdk/pipes-deployment/references/DEPLOYMENT_OPTIONS.md
+```
+
+Or use Claude Code's Read tool:
+```
+Read: pipes-sdk/pipes-deployment/references/DEPLOYMENT_OPTIONS.md
+```
+
+### Official Subsquid Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick deployment reference
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive deployment guide
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Network endpoints for production deployment

@@ -390,15 +390,39 @@ Always validate indexed data before production use:
 
 ## Related Skills
 
-- [pipes-workflow](../pipes-workflow/SKILL.md) - Mandatory 7-step workflow
+- See pipes-orchestrator for workflow guidance - Mandatory 7-step workflow
 - [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
-- [pipes-check-setup](../pipes-check-setup/SKILL.md) - Verify environment first
+- See ENVIRONMENT_SETUP.md for setup verification - Verify environment first
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix issues
 - [pipes-template-dex-swaps](../pipes-template-dex-swaps/SKILL.md) - DEX template details
 - [pipes-deploy-clickhouse-cloud](../pipes-deploy-clickhouse-cloud/SKILL.md) - Cloud deployment
 
-## Additional Resources
+## Related Documentation
 
-Reference these skills for deeper guidance:
-- [pipes-workflow](../pipes-workflow/SKILL.md) - Mandatory 7-step workflow with references to INDEXER_WORKFLOW.md and QUICK_REF_EVM.md
-- [pipes-patterns](../pipes-patterns/SKILL.md) - EVM patterns, troubleshooting, and performance optimization guides
+This skill includes comprehensive reference documentation in the `references/` directory:
+
+- **[ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md)** - Development environment setup guide, prerequisites check, platform-specific notes, and troubleshooting
+
+### How to Access
+
+```bash
+# Read environment setup guide
+cat pipes-sdk/pipes-new-indexer/references/ENVIRONMENT_SETUP.md
+```
+
+Or use Claude Code's Read tool:
+```
+Read: pipes-sdk/pipes-new-indexer/references/ENVIRONMENT_SETUP.md
+```
+
+### Additional Resources
+
+For comprehensive patterns and workflows:
+- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - EVM patterns, troubleshooting, and performance optimization
+- [Orchestrator workflow section](../pipes-orchestrator/SKILL.md#pipes-indexer-workflow-7-steps) - Mandatory 7-step workflow
+
+### Official Subsquid Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Pipes SDK
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Subsquid documentation
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Pipes SDK guide
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported networks and chains

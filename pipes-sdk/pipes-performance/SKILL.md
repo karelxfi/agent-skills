@@ -296,13 +296,17 @@ Don't optimize if:
 
 ## Related Skills
 
-- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
 - [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate data quality
 
-## Reference Files
+## Related Documentation
 
-- `.claude/docs/INDEXER_WORKFLOW.md` - Mandatory workflow and lessons learned
-- `.claude/docs/references/PERFORMANCE.md` - Performance optimization guide
-- Working examples with real timings
+- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - Performance optimization patterns and benchmarks
+
+## Official Subsquid Documentation
+
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete performance optimization guide
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Portal API performance best practices
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API filtering capabilities
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Network-specific performance characteristics

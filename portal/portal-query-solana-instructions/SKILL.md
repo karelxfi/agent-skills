@@ -92,8 +92,10 @@ Instruction:
 **Example (Jupiter swap):**
 ```
 Function: sharedAccountsRoute
-Discriminator (d8): 0xe445a52e51cb9a1d
+Discriminator (d8): 0x5703feb8e7573909
 ```
+
+**⚠️ Important:** Discriminator values are computed from the actual program IDL and may differ between program versions. Always verify discriminator values against the specific program version you're querying. The examples shown are for reference and may need to be updated.
 
 **Computing discriminator (Anchor):**
 ```typescript
@@ -105,7 +107,7 @@ function getDiscriminator(name: string): string {
 }
 
 getDiscriminator('sharedAccountsRoute');
-// Result: 0xe445a52e51cb9a1d
+// Compute discriminator from your program's IDL
 ```
 
 ---
@@ -123,7 +125,7 @@ getDiscriminator('sharedAccountsRoute');
   "toBlock": 250001000,
   "instructions": [{
     "programId": ["JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"],
-    "d8": ["0xe445a52e51cb9a1d"]
+    "d8": ["0x5703feb8e7573909"]
   }],
   "fields": {
     "instruction": {
@@ -146,6 +148,7 @@ getDiscriminator('sharedAccountsRoute');
 **Function:** sharedAccountsRoute (common swap function)
 **Notes:**
 - `d8` discriminator identifies the specific function
+- Discriminator values must be verified against the program's IDL
 - `accounts` array shows all involved accounts (token accounts, pools, etc.)
 - `transactionHash` links to transaction details
 
@@ -364,7 +367,7 @@ getDiscriminator('sharedAccountsRoute');
   "instructions": [{
     "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
     "d8": ["0xf8c69e91e17587c8"],
-    "accounts": ["7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm"]
+    "a0": ["7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm"]
   }],
   "fields": {
     "instruction": {
@@ -380,6 +383,7 @@ getDiscriminator('sharedAccountsRoute');
 **Program:** Orca Whirlpool
 **Pool:** USDC/SOL pool address
 **Notes:**
+- Use position-based account filters (`a0`-`a31`) to filter by account at specific positions
 - Pool addresses are stable identifiers for specific trading pairs
 - Account filtering reduces data volume significantly
 - More efficient than protocol-wide queries
@@ -878,3 +882,15 @@ Portal returns **JSON Lines** (one JSON object per line):
 - **Solana Program Library:** https://spl.solana.com/
 - **Anchor Framework:** https://www.anchor-lang.com/
 - **Current Slot Number:** https://explorer.solana.com/
+
+## Official Subsquid Documentation
+
+### Core Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API Solana querying
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Solana instructions query guide
+
+### API Resources
+- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/files/solana-openapi.yaml)** - Complete Solana query specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported Solana networks
+- **[Solana Stream API](https://beta.docs.sqd.dev/api/catalog/solana/stream)** - Instructions query documentation

@@ -280,6 +280,178 @@ Error: Cannot insert NULL into NOT NULL column
      --query "DROP TABLE IF EXISTS pipes.sync"
    ```
 
+## Data Validation & Quality Checks
+
+After an indexer completes successfully, validate the data quality to ensure production readiness.
+
+### Validation Levels
+
+#### Level 1: Schema Validation (CRITICAL)
+
+Verify table structure is correct:
+
+```sql
+-- Check table exists
+SELECT count() FROM system.tables
+WHERE database = '<database>' AND name = '<table_name>'
+
+-- Check column types
+DESCRIBE <database>.<table_name>
+```
+
+**Checks**:
+- Table exists
+- All expected columns present
+- Column data types match design
+- Indexes created
+- Table engine correct
+
+#### Level 2: Data Quality (HIGH PRIORITY)
+
+Validate individual data values:
+
+```sql
+-- Address format validation
+SELECT
+  countIf(length(pool_address) != 42) as invalid_length,
+  countIf(pool_address NOT LIKE '0x%') as missing_prefix,
+  countIf(NOT match(pool_address, '^0x[0-9a-fA-F]{40}$')) as invalid_format
+FROM <table_name>
+
+-- Transaction hash format
+SELECT
+  countIf(length(transaction_hash) != 66) as invalid_length,
+  countIf(transaction_hash NOT LIKE '0x%') as missing_prefix
+FROM <table_name>
+
+-- BigInt values validation
+SELECT
+  countIf(amount = '') as empty_amounts,
+  countIf(NOT match(amount, '^-?[0-9]+$')) as invalid_numbers
+FROM <table_name>
+
+-- NULL checks
+SELECT
+  countIf(from_address IS NULL) as null_from,
+  countIf(to_address IS NULL) as null_to,
+  countIf(value IS NULL) as null_value
+FROM <table_name>
+```
+
+**Checks**:
+- Addresses are 42 characters (0x + 40 hex)
+- Transaction hashes are 66 characters (0x + 64 hex)
+- BigInt values are valid numbers
+- No unexpected NULL values
+- Block numbers in expected range
+
+#### Level 3: Completeness (MEDIUM PRIORITY)
+
+Ensure no missing data:
+
+```sql
+-- Block range coverage
+SELECT
+  MIN(block_number) as min_block,
+  MAX(block_number) as max_block,
+  COUNT(DISTINCT block_number) as unique_blocks
+FROM <table_name>
+
+-- Check for block gaps
+SELECT
+  block_number,
+  block_number - lag(block_number) OVER (ORDER BY block_number) as gap
+FROM (
+  SELECT DISTINCT block_number
+  FROM <table_name>
+  ORDER BY block_number
+)
+WHERE gap > 1
+
+-- Event count per block
+SELECT
+  block_number,
+  COUNT(*) as event_count
+FROM <table_name>
+GROUP BY block_number
+HAVING event_count > 1000
+ORDER BY event_count DESC
+LIMIT 10
+```
+
+**Checks**:
+- Block range matches expected
+- No gaps in block sequence
+- Event counts are reasonable
+- No duplicate events (same tx_hash + log_index)
+
+#### Level 4: Consistency (MEDIUM PRIORITY)
+
+Verify logical relationships:
+
+```sql
+-- Block timestamps are monotonic
+SELECT
+  block_number,
+  block_timestamp,
+  lag(block_timestamp) OVER (ORDER BY block_number) as prev_timestamp
+FROM (
+  SELECT DISTINCT block_number, block_timestamp
+  FROM <table_name>
+  ORDER BY block_number
+)
+WHERE block_timestamp < prev_timestamp
+```
+
+**Checks**:
+- Block timestamps increase with block numbers
+- Log indexes sequential within transactions
+
+### Common Data Quality Issues
+
+#### Issue 1: NULL Values in Required Fields
+
+**Symptom**: Critical fields contain NULL
+
+**Cause**: Missing `.toString()` on BigInt values
+
+**Fix**:
+```typescript
+// Wrong
+amount: transfer.event.value,
+
+// Correct
+amount: transfer.event.value.toString(),
+```
+
+#### Issue 2: Invalid Address Formats
+
+**Symptom**: Addresses not 42 characters or missing 0x
+
+**Cause**: Incorrect data extraction or transformation
+
+**Fix**: Validate address format in transformation pipeline
+
+#### Issue 3: Block Gaps
+
+**Symptom**: Missing blocks in sequence
+
+**Cause**: Indexer crashed and didn't resume properly
+
+**Fix**: Clear sync table and restart from affected block
+
+### Validation Checklist
+
+Before declaring success:
+
+- [ ] Table structure matches design
+- [ ] No NULL values in required fields
+- [ ] All addresses are valid (42 chars, 0x prefix, hex)
+- [ ] All transaction hashes valid (66 chars)
+- [ ] Block range complete (no gaps)
+- [ ] Data count increasing over time
+- [ ] Sample transactions match block explorer
+
 ## Diagnostic Workflow
 
 1. **Read error message** - Get exact error text
@@ -288,20 +460,51 @@ Error: Cannot insert NULL into NOT NULL column
 4. **Verify environment** - Check database, network, dependencies
 5. **Apply fix** - Edit files or run commands
 6. **Test fix** - Restart indexer and verify
-7. **Monitor** - Watch logs to confirm resolution
+7. **Validate data** - Run quality checks above
+8. **Monitor** - Watch logs to confirm resolution
 
 ## Prevention Tips
 
 1. **Always use Pipes CLI** - Never manually create files
-2. **Follow workflow** - Read pipes-workflow skill first
+2. **Follow workflow** - See pipes-orchestrator for 7-step workflow
 3. **Start with recent blocks** - Test faster, iterate quicker
-4. **Verify setup** - Use pipes-check-setup before starting
-5. **Check examples** - Look for similar patterns in existing code
+4. **Verify setup** - See ENVIRONMENT_SETUP.md before starting
+5. **Check patterns** - See PATTERNS.md for common solutions
 
 ## Related Skills
 
-- [pipes-workflow](../pipes-workflow/SKILL.md) - Prevent errors by following workflow
-- [pipes-check-setup](../pipes-check-setup/SKILL.md) - Verify environment
+- [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create new indexers
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize slow indexers
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate data quality
 - [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
+- [pipes-abi](../pipes-abi/SKILL.md) - Fetch contract ABIs
+- [pipes-schema-design](../pipes-schema-design/SKILL.md) - Design schemas
+
+## Related Documentation
+
+This skill includes comprehensive reference documentation in the `references/` directory:
+
+- **[PATTERNS.md](references/PATTERNS.md)** - Common indexing patterns, performance optimization, error patterns, and best practices
+
+### How to Access
+
+```bash
+# Read patterns and best practices
+cat pipes-sdk/pipes-troubleshooting/references/PATTERNS.md
+```
+
+Or use Claude Code's Read tool:
+```
+Read: pipes-sdk/pipes-troubleshooting/references/PATTERNS.md
+```
+
+### Additional Resources
+
+- [ENVIRONMENT_SETUP.md](../pipes-new-indexer/references/ENVIRONMENT_SETUP.md) - Setup prerequisites
+- [DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md) - Production deployment
+- [RESEARCH_CHECKLIST.md](../pipes-abi/references/RESEARCH_CHECKLIST.md) - Protocol research workflow
+
+### Official Subsquid Documentation
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete troubleshooting and error references
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Pipes SDK guide
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API specification for debugging EVM issues
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Verify network names and endpoints

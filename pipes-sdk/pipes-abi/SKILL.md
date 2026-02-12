@@ -353,6 +353,30 @@ Please check the file or fetch from verified contract.
 - [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
 
+## Related Documentation
+
+This skill includes comprehensive reference documentation in the `references/` directory:
+
+- **[RESEARCH_CHECKLIST.md](references/RESEARCH_CHECKLIST.md)** - Protocol research workflow, contract discovery methods, deployment block finding, and common gotchas
+
+### How to Access
+
+```bash
+# Read protocol research guide
+cat pipes-sdk/pipes-abi/references/RESEARCH_CHECKLIST.md
+```
+
+Or use Claude Code's Read tool:
+```
+Read: pipes-sdk/pipes-abi/references/RESEARCH_CHECKLIST.md
+```
+
+### Official Subsquid Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for ABI handling
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API specification for EVM chains
+- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/files/solana-openapi.yaml)** - Portal API specification for Solana
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported networks for ABI fetching
+
 ## Best Practices
 
 1. **Always check for standard interfaces first** (ERC20, ERC721, etc.)

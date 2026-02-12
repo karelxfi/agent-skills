@@ -72,7 +72,7 @@ Use this skill when you need to:
 | zkSync Era | `zksync-mainnet` | EVM |
 | Scroll | `scroll-mainnet` | EVM |
 | Linea | `linea-mainnet` | EVM |
-| Blast | `blast-mainnet` | EVM |
+| Blast | `blast-l2-mainnet` | EVM |
 | Mantle | `mantle-mainnet` | EVM |
 | Mode | `mode-mainnet` | EVM |
 
@@ -82,7 +82,6 @@ Use this skill when you need to:
 |-------------|-------------------|------|
 | BSC / Binance Smart Chain | `binance-mainnet` | EVM |
 | Avalanche C-Chain | `avalanche-mainnet` | EVM |
-| Fantom | `fantom-mainnet` | EVM |
 | Gnosis Chain | `gnosis-mainnet` | EVM |
 | Moonbeam | `moonbeam-mainnet` | EVM |
 | Moonriver | `moonriver-mainnet` | EVM |
@@ -378,6 +377,7 @@ POST /datasets/binance-mainnet/stream
 | Arbitrum | arbitrum | arbitrum-one | arbiscan.io |
 | BSC | bsc | binance-mainnet | bscscan.com |
 | zkSync Era | zksync-era | zksync-mainnet | explorer.zksync.io |
+| Blast | blast | blast-l2-mainnet | blastscan.io |
 
 **Always use Portal-specific names when querying Portal API.**
 
@@ -413,12 +413,11 @@ POST /datasets/binance-mainnet/stream
   "BSC": "binance-mainnet",
   "Avalanche": "avalanche-mainnet",
   "zkSync Era": "zksync-mainnet",
-  "Blast": "blast-mainnet",
+  "Blast": "blast-l2-mainnet",
   "Scroll": "scroll-mainnet",
   "Linea": "linea-mainnet",
   "Mantle": "mantle-mainnet",
   "Polygon zkEVM": "polygon-zkevm-mainnet",
-  "Fantom": "fantom-mainnet",
   "Gnosis": "gnosis-mainnet",
   "Celo": "celo-mainnet",
   "Moonbeam": "moonbeam-mainnet",
@@ -439,7 +438,8 @@ POST /datasets/binance-mainnet/stream
   "Ethereum Sepolia": "ethereum-sepolia",
   "Arbitrum Sepolia": "arbitrum-sepolia",
   "Base Sepolia": "base-sepolia",
-  "Optimism Sepolia": "optimism-sepolia"
+  "Optimism Sepolia": "optimism-sepolia",
+  "Blast Sepolia": "blast-sepolia"
 }
 ```
 
@@ -467,6 +467,8 @@ POST /datasets/binance-mainnet/stream
    ```
    POST https://portal.sqd.dev/datasets/{dataset-name}/stream
    ```
+
+**Note:** Some chains that appear on other platforms (like DeFiLlama) may not be supported by Portal. Always verify availability before assuming a dataset exists.
 
 ---
 
@@ -548,3 +550,20 @@ const url = `https://portal.sqd.dev/datasets/${PORTAL_DATASETS.ARBITRUM}/stream`
 ```
 
 This prevents typos and makes refactoring easier.
+
+---
+
+## Official Subsquid Documentation
+
+### Core Documentation
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Complete list of all supported networks (PRIMARY RESOURCE)
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
+
+### API Schemas
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Complete Portal API specification for EVM chains
+- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/files/solana-openapi.yaml)** - Complete Portal API specification for Solana
+
+### API Documentation
+- **[EVM Stream API](https://beta.docs.sqd.dev/api/catalog/stream)** - EVM dataset documentation
+- **[Solana Stream API](https://beta.docs.sqd.dev/api/catalog/solana/stream)** - Solana dataset documentation

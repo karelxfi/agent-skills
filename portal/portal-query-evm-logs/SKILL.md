@@ -208,23 +208,25 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
 
 ---
 
-### Example 5: NFT Transfers with Token ID Filter
+### Example 5: NFT Transfers to Specific Address
 
-**Use case:** Track transfers of a specific NFT token ID.
+**Use case:** Track NFT transfers to a specific wallet address.
 
 ```json
 {
   "type": "evm",
-  "fromBlock": 19500000,
+  "fromBlock": 17000000,
+  "toBlock": 17001000,
   "logs": [{
-    "address": ["0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"],
+    "address": ["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"],
     "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
-    "topic3": ["0x0000000000000000000000000000000000000000000000000000000000000001"]
+    "topic2": ["0x000000000000000000000000742d35cc6634c0532925a3b844bc454e4438f44e"]
   }],
   "fields": {
     "log": {
       "address": true,
       "topics": true,
+      "data": true,
       "transactionHash": true,
       "blockNumber": true
     }
@@ -235,7 +237,11 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
 **Dataset:** `ethereum-mainnet`
 **Contract:** Bored Ape Yacht Club
 **Event:** Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
-**Filter:** Only token ID #1 (topic3)
+**Filter:** NFTs transferred TO a specific address (topic2)
+**Notes:**
+- ERC721 Transfer events have 3 indexed parameters: `from`, `to`, `tokenId`
+- `topic1` = from address, `topic2` = to address, `topic3` = token ID
+- Compare with ERC20: only 2 indexed parameters (`from`, `to`), amount is in `data`
 
 ---
 
@@ -599,3 +605,15 @@ Portal returns **JSON Lines** (one JSON object per line):
 - **API Documentation:** https://beta.docs.sqd.dev/api/catalog/stream
 - **Schema Reference:** https://github.com/subsquid/sqd-portal/blob/master/resources/schemas.json
 - **Event Signature Calculator:** https://www.4byte.directory/
+
+## Official Subsquid Documentation
+
+### Core Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API logs querying
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Portal API guide
+
+### API Resources
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Complete logs query specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks
+- **[EVM Stream API](https://beta.docs.sqd.dev/api/catalog/stream)** - Logs query documentation

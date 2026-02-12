@@ -588,9 +588,9 @@ ORDER BY total_referred_volume DESC
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexer using this template
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize sync speed
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate indexed data
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
 - [pipes-template-dex-swaps](../pipes-template-dex-swaps/SKILL.md) - DEX template
-- [pipes-template-erc4626-vaults](../pipes-template-erc4626-vaults/SKILL.md) - Vault template
+- [pipes-template-lending-protocol](../pipes-template-lending-protocol/SKILL.md) - Lending template
 
 ## Additional Resources
 
@@ -599,6 +599,12 @@ ORDER BY total_referred_volume DESC
 - **Compound V3 Docs**: https://docs.compound.finance/
 - **Morpho Docs**: https://docs.morpho.org/
 - **DeFi Lending**: https://ethereum.org/en/defi/#lending
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick lending protocol indexing reference
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Supported lending protocol networks
 
 ## Version History
 

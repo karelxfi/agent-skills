@@ -651,3 +651,15 @@ Portal returns **JSON Lines** (one JSON object per line):
 - **Schema Reference:** https://github.com/subsquid/sqd-portal/blob/master/resources/schemas.json
 - **EVM Trace Specification:** https://openethereum.github.io/JSONRPC-trace-module
 - **Proxy Patterns:** https://docs.openzeppelin.com/contracts/4.x/api/proxy
+
+## Official Subsquid Documentation
+
+### Core Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API traces querying
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive traces query guide
+
+### API Resources
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Complete traces query specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks
+- **[EVM Stream API](https://beta.docs.sqd.dev/api/catalog/stream)** - Traces query documentation

@@ -2,7 +2,7 @@
 
 ![Experimental](https://img.shields.io/badge/experimental-blue)
 
-21 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
+12 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
 
 ## Installation
 
@@ -18,57 +18,94 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk
 
 ## Available Skills
 
-| Skill | Use Case | Category |
-|-------|----------|----------|
-| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM and Solana chains | Core |
-| **pipes-orchestrator** | Routes indexer requests to specialized agents and coordinates multi-agent workflows | Core |
-| **pipes-troubleshooting** | Diagnose and fix runtime errors in blockchain indexers | Core |
-| **pipes-performance** | Analyze and optimize indexer sync performance | Core |
-| **pipes-validation** | Validate indexed data quality and completeness | Core |
-| **pipes-workflow** | Core 7-step workflow for creating indexers | Documentation |
-| **pipes-deploy-clickhouse-cloud** | Deploy indexers to ClickHouse Cloud | Deployment |
-| **pipes-deploy-clickhouse-local** | Deploy indexers to local ClickHouse (Docker) | Deployment |
-| **pipes-deploy-railway** | Deploy indexers to Railway platform | Deployment |
-| **pipes-abi** | Fetch, analyze, and manage contract ABIs | Research |
-| **pipes-schema-design** | Design optimal database schemas for blockchain data | Research |
-| **pipes-research-protocol** | Research DeFi protocols and propose indexer data structures | Research |
-| **pipes-find-contracts** | Find verified contract addresses using addybook.xyz registry and web search | Research |
-| **pipes-template-dex-swaps** | Template for DEX swap indexing with Uniswap, SushiSwap, and other AMM protocols | Template |
-| **pipes-template-nft-transfers** | Template for tracking NFT transfers (ERC-721, ERC-1155) | Template |
-| **pipes-template-liquid-staking** | Template for liquid staking protocols (Lido, Rocket Pool, Frax) | Template |
-| **pipes-template-erc4626-vaults** | Template for ERC-4626 vault activity | Template |
-| **pipes-template-lending-protocol** | Template for lending protocol events (Aave, Compound, Morpho) | Template |
-| **pipes-check-setup** | Verify development environment setup | Core |
-| **pipes-deployment** | Complete deployment guides for all platforms | Documentation |
-| **pipes-patterns** | Blockchain indexing patterns and best practices | Documentation |
+### Core Skills
+
+| Skill | Use Case |
+|-------|----------|
+| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM and Solana chains |
+| **pipes-orchestrator** | Routes indexer requests to specialized agents and coordinates multi-agent workflows |
+| **pipes-troubleshooting** | Diagnose and fix runtime errors in blockchain indexers |
+| **pipes-performance** | Analyze and optimize indexer sync performance |
+| **pipes-abi** | Fetch, analyze, and manage contract ABIs for EVM chains |
+
+### Deployment Skills
+
+| Skill | Use Case |
+|-------|----------|
+| **pipes-deploy-clickhouse-cloud** | Deploy indexers to ClickHouse Cloud with production configuration |
+| **pipes-deploy-clickhouse-local** | Deploy indexers to local ClickHouse (Docker) for development |
+| **pipes-deployment** | Complete deployment guides for all platforms (ClickHouse Cloud, local, Railway) |
+
+### Schema Design
+
+| Skill | Use Case |
+|-------|----------|
+| **pipes-schema-design** | Design optimal database schemas for blockchain data (ClickHouse and PostgreSQL) |
+
+### Templates for AI agents to use
+
+| Skill | Use Case |
+|-------|----------|
+| **pipes-template-dex-swaps** | Production template for DEX swap indexing (Uniswap, SushiSwap, PancakeSwap) |
+| **pipes-template-nft-transfers** | Production template for tracking NFT transfers (ERC-721) |
+| **pipes-template-lending-protocol** | Production template for lending protocols (Aave V3, Compound V3, Morpho) |
 
 ## Usage
 
 Skills are automatically available once installed. The agent will use them when relevant tasks are detected.
 
-**Examples:**
-```
-Create a new indexer for USDC transfers on Ethereum
-```
-```
-My indexer is syncing slowly, help me optimize it
-```
-```
-Deploy my indexer to ClickHouse Cloud
-```
+**Example prompts:**
+- "Create a new indexer for USDC transfers on Ethereum"
+- "My indexer is syncing slowly, help me optimize it"
+- "Deploy my indexer to ClickHouse Cloud"
+- "Get the ABI for the Uniswap V3 router"
+- "Design a schema for tracking Aave V3 lending events"
+
+## Quick Start
+
+1. **Create a new indexer:**
+   ```
+   Create a DEX swap indexer for Uniswap V3 on Base
+   ```
+   Uses: `pipes-new-indexer`, `pipes-template-dex-swaps`
+
+2. **Debug issues:**
+   ```
+   My indexer shows "No data in database after 60 seconds"
+   ```
+   Uses: `pipes-troubleshooting`
+
+3. **Optimize performance:**
+   ```
+   How can I make my indexer sync faster?
+   ```
+   Uses: `pipes-performance`
+
+4. **Deploy to production:**
+   ```
+   Deploy my indexer to ClickHouse Cloud
+   ```
+   Uses: `pipes-deploy-clickhouse-cloud`
 
 ## Skill Structure
 
 Each skill contains:
 
 - `SKILL.md` - Instructions for the agent
-- `scripts/` - Helper scripts for automation (optional)
+- `templates/` - Extra templates for references (optional)
 - `references/` - Supporting documentation (optional)
 
 ## Resources
 
-- **Pipes SDK**: [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
-- **SQD Documentation**: [beta.docs.sqd.dev](https://beta.docs.sqd.dev)
+### Pipes SDK
+- **Repository**: [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
+- **CLI Package**: [@iankressin/pipes-cli](https://www.npmjs.com/package/@iankressin/pipes-cli)
+
+### SQD Portal
+- **Portal API**: [portal.sqd.dev](https://portal.sqd.dev)
+- **Documentation**: [beta.docs.sqd.dev](https://beta.docs.sqd.dev)
+
+### MCP Servers (Optional)
 - **ClickHouse MCP**: [github.com/ClickHouse/mcp-clickhouse](https://github.com/ClickHouse/mcp-clickhouse)
 - **ClickHouse Cloud MCP**: [clickhouse.com/docs/use-cases/AI/MCP/remote_mcp](https://clickhouse.com/docs/use-cases/AI/MCP/remote_mcp)
 - **Railway MCP**: [docs.railway.com/ai/mcp-server](https://docs.railway.com/ai/mcp-server)

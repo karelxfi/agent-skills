@@ -330,16 +330,21 @@ LIMIT 20
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexer using this template
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize sync speed
-- [pipes-validation](../pipes-validation/SKILL.md) - Validate indexed data
+- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
 - [pipes-template-nft-transfers](../pipes-template-nft-transfers/SKILL.md) - NFT template
-- [pipes-template-erc4626-vaults](../pipes-template-erc4626-vaults/SKILL.md) - Vault template
+- [pipes-template-lending-protocol](../pipes-template-lending-protocol/SKILL.md) - Lending template
 
 ## Additional Resources
 
 - **Template Code**: See `templates/generic-dex-swaps/` for full implementation
 - **Uniswap V3 Docs**: https://docs.uniswap.org/contracts/v3/overview
 - **SushiSwap Docs**: https://docs.sushi.com/
-- **Factory Pattern Guide**: See pipes-patterns skill for advanced factory usage
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick DEX indexing reference
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API for factory patterns
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Supported DEX networks
 
 ## Version History
 

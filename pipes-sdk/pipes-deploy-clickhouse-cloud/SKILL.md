@@ -418,9 +418,54 @@ CREATE DATABASE aave_polygon;
 - Track data quality metrics
 - Monitor Cloud service health
 
+## Alternative Deployment Options
+
+While ClickHouse Cloud provides the database, you have options for where to run your indexer application:
+
+### Running Indexer Application
+
+1. **Local Machine** - Simple for development/testing
+2. **Railway** - Easy platform deployment with git push
+3. **Self-Hosted Cloud** - AWS/GCP/Azure for full control
+4. **Containerized** - Docker/Kubernetes for scalability
+
+For detailed comparison of deployment platforms, see:
+- **[DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md)** - Complete deployment guide including Railway, self-hosted, and cost comparisons
+
+### Railway Quick Reference
+
+If deploying indexer to Railway while using ClickHouse Cloud:
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login and deploy
+railway login
+railway init
+railway variables set \
+  CLICKHOUSE_URL="$CLICKHOUSE_URL" \
+  CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD"
+railway up
+```
+
+See DEPLOYMENT_OPTIONS.md for full Railway deployment guide.
+
 ## Related Skills
 
 - [pipes-deploy-clickhouse-local](../pipes-deploy-clickhouse-local/SKILL.md) - Local testing
-- [pipes-deploy-railway](../pipes-deploy-railway/SKILL.md) - Railway deployment
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors
+- [pipes-performance](../pipes-performance/SKILL.md) - Optimize performance
+
+## Related Documentation
+
+- [DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md) - Complete deployment guide
+- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - Performance best practices
+- [ENVIRONMENT_SETUP.md](../pipes-new-indexer/references/ENVIRONMENT_SETUP.md) - Setup prerequisites
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick deployment reference
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - ClickHouse Cloud deployment guide
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - Network endpoints for cloud deployment

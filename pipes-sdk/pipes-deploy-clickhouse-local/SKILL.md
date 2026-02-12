@@ -465,6 +465,11 @@ docker run -d \
 ## Related Skills
 
 - [pipes-deploy-clickhouse-cloud](../pipes-deploy-clickhouse-cloud/SKILL.md) - Cloud deployment
-- [pipes-deploy-railway](../pipes-deploy-railway/SKILL.md) - Railway deployment
+- [DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md) - Railway and other deployment options
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors
+
+## Official Subsquid Documentation
+
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick local deployment reference
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Docker and local development guide

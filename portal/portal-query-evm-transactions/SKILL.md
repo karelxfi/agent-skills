@@ -454,6 +454,9 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
 
 **Automatically fetch related data for matched transactions:**
 
+`includeRelated` is a **filter-level parameter** placed inside each transaction filter object. It tells Portal to automatically fetch related logs, traces, or state diffs for matching transactions.
+
+**Structure:**
 ```json
 {
   "transactions": [{
@@ -466,6 +469,11 @@ const sighash = ethers.id("swap(uint256,address[])").slice(0, 10);
   }]
 }
 ```
+
+**Important notes:**
+- `includeRelated` goes INSIDE the transaction filter object (not at query level)
+- Must also request the corresponding fields in the `fields` section
+- Related data appears in the same response object as the transaction
 
 **Benefits:**
 - Single query instead of multiple
@@ -749,3 +757,15 @@ Portal returns **JSON Lines** (one JSON object per line):
 - **Schema Reference:** https://github.com/subsquid/sqd-portal/blob/master/resources/schemas.json
 - **Function Selector Database:** https://www.4byte.directory/
 - **Sighash Calculator:** https://emn178.github.io/online-tools/keccak_256.html
+
+## Official Subsquid Documentation
+
+### Core Documentation
+- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API transactions querying
+- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
+- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive transactions query guide
+
+### API Resources
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Complete transactions query specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks
+- **[EVM Stream API](https://beta.docs.sqd.dev/api/catalog/stream)** - Transactions query documentation
