@@ -297,7 +297,6 @@ Don't optimize if:
 ## Related Skills
 
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
-- [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
 
 ## Related Documentation
@@ -308,5 +307,5 @@ Don't optimize if:
 
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete performance optimization guide
 - **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Portal API performance best practices
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API filtering capabilities
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Portal API filtering capabilities
 - **[Available Datasets](https://portal.sqd.dev/datasets)** - Network-specific performance characteristics

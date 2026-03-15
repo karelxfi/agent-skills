@@ -466,7 +466,7 @@ Before declaring success:
 ## Prevention Tips
 
 1. **Always use Pipes CLI** - Never manually create files
-2. **Follow workflow** - See pipes-orchestrator for 7-step workflow
+2. **Follow workflow** - See pipes-new-indexer for the standard workflow
 3. **Start with recent blocks** - Test faster, iterate quicker
 4. **Verify setup** - See ENVIRONMENT_SETUP.md before starting
 5. **Check patterns** - See PATTERNS.md for common solutions
@@ -475,9 +475,8 @@ Before declaring success:
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create new indexers
 - [pipes-performance](../pipes-performance/SKILL.md) - Optimize slow indexers
-- [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
-- [pipes-abi](../pipes-abi/SKILL.md) - Fetch contract ABIs
-- [pipes-schema-design](../pipes-schema-design/SKILL.md) - Design schemas
+- [pipes-new-indexer ABI_GUIDE](../pipes-new-indexer/references/ABI_GUIDE.md) - Fetch contract ABIs and handle proxies
+- [pipes-new-indexer SCHEMA_GUIDE](../pipes-new-indexer/references/SCHEMA_GUIDE.md) - Design ClickHouse schemas
 
 ## Related Documentation
 
@@ -500,11 +499,10 @@ Read: pipes-sdk/pipes-troubleshooting/references/PATTERNS.md
 ### Additional Resources
 
 - [ENVIRONMENT_SETUP.md](../pipes-new-indexer/references/ENVIRONMENT_SETUP.md) - Setup prerequisites
-- [DEPLOYMENT_OPTIONS.md](../pipes-deployment/references/DEPLOYMENT_OPTIONS.md) - Production deployment
-- [RESEARCH_CHECKLIST.md](../pipes-abi/references/RESEARCH_CHECKLIST.md) - Protocol research workflow
+- [RESEARCH_CHECKLIST.md](../pipes-new-indexer/references/RESEARCH_CHECKLIST.md) - Protocol research workflow
 
 ### Official Subsquid Documentation
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete troubleshooting and error references
 - **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Pipes SDK guide
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Portal API specification for debugging EVM issues
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Portal API specification for debugging EVM issues
 - **[Available Datasets](https://portal.sqd.dev/datasets)** - Verify network names and endpoints

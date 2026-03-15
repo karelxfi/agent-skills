@@ -94,7 +94,7 @@ From verified source code or ABI:
 **Where to find**:
 - GitHub repository (`.sol` files)
 - Block explorer "Contract" tab (if verified)
-- ABI JSON (use pipes-abi skill)
+- ABI JSON (see ABI_GUIDE.md)
 
 ### Step 6: Check for Proxy Patterns
 
@@ -234,12 +234,13 @@ This data enables:
 ## Integration with Other Skills
 
 ### After research approved:
-- **pipes-abi**: Fetch full ABI from block explorer
-- **pipes-schema-design**: Design ClickHouse schema
+- **ABI_GUIDE.md**: Fetch full ABI from block explorer and generate TypeScript types
+- **SCHEMA_GUIDE.md**: Design ClickHouse schema for the indexed events
 - **pipes-new-indexer**: Generate indexer project
 - **pipes-troubleshooting**: Debug if issues arise
 
 ## Related Documentation
 
-- See PATTERNS.md for common indexing patterns
+- See ABI_GUIDE.md for ABI fetching and proxy contract handling
+- See SCHEMA_GUIDE.md for ClickHouse schema design patterns
 - See ENVIRONMENT_SETUP.md for development prerequisites

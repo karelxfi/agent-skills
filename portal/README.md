@@ -2,7 +2,7 @@
 
 ![Experimental](https://img.shields.io/badge/experimental-blue)
 
-5 skills for AI coding agents working with [SQD Portal](https://portal.sqd.dev) - query blockchain data across 225+ chains without infrastructure.
+6 skills for AI coding agents working with [SQD Portal](https://portal.sqd.dev) - query blockchain data across 210+ chains without infrastructure.
 
 ## Installation
 
@@ -25,6 +25,7 @@ npx skills add subsquid-labs/agent-skills/portal
 | **portal-query-evm-transactions** | Query EVM transactions by sender, recipient, or function selector | Core |
 | **portal-query-evm-traces** | Query internal transactions, contract deployments, and delegatecall patterns | Advanced |
 | **portal-query-solana-instructions** | Query Solana program instructions with discriminator and account filters | Core |
+| **portal-query-hyperliquid-fills** | Query Hyperliquid trade fills with coin, user, and side filters | Core |
 
 ## Usage
 
@@ -40,6 +41,9 @@ Find all contracts deployed by 0x123... on Ethereum
 ```
 Track Jupiter swap instructions on Solana
 ```
+```
+Analyze BTC trading fills on Hyperliquid
+```
 
 ## Skill Structure
 
@@ -52,9 +56,10 @@ Each skill contains:
 
 ## Resources
 
-- **Portal API (EVM):** [beta.docs.sqd.dev/api/catalog/stream](https://beta.docs.sqd.dev/api/catalog/stream)
-- **Portal API (Solana):** [beta.docs.sqd.dev/api/catalog/solana/stream](https://beta.docs.sqd.dev/api/catalog/solana/stream)
-- **Schema Reference:** [github.com/subsquid/sqd-portal/blob/master/resources/schemas.json](https://github.com/subsquid/sqd-portal/blob/master/resources/schemas.json)
+- **Portal API (EVM):** [beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)
+- **Portal API (Solana):** [beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)
+- **Portal API (Hyperliquid Fills):** [beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml)
+- **AI Development:** [beta.docs.sqd.dev/en/ai/ai-development](https://beta.docs.sqd.dev/en/ai/ai-development)
 
 ## License
 

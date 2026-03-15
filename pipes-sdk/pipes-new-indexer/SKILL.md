@@ -5,7 +5,7 @@ compatibility: Requires npm/npx for @iankressin/pipes-cli
 allowed-tools: [Bash, Read, Write]
 metadata:
   author: subsquid
-  version: "1.1.0"
+  version: "2.0.0"
   category: core
 ---
 
@@ -27,23 +27,35 @@ The Pipes CLI (`@iankressin/pipes-cli`) provides an interactive scaffolding tool
 
 ## Available Templates
 
-Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of available templates.
+Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of available templates and their parameter schemas.
 
-### Common EVM Templates
-- **erc20Transfers** (camelCase) - Track ERC20 token transfers
-- **uniswapV3Swaps** (camelCase) - Track Uniswap V3 swap events
+### EVM Templates
+
+**erc20Transfers** - Track ERC20 token transfers:
+```json
+{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}
+```
+
+**uniswapV3Swaps** - Track Uniswap V3 swap events via factory pattern:
+```json
+{"templateId": "uniswapV3Swaps", "params": {"factoryAddress": "0x1F98431c8aD98523631AE4a59f267346ea31F984"}}
+```
+
+**custom** - Custom contract events (requires full event ABI):
+```json
+{"templateId": "custom", "params": {"contracts": [{"contractAddress": "0x...", "contractName": "MyContract", "contractEvents": [{"name": "Transfer", "type": "event", "inputs": [{"name": "from", "type": "address"}, {"name": "to", "type": "address"}, {"name": "value", "type": "uint256"}]}]}]}}
+```
+
+### SVM (Solana) Templates
 - **custom** - Start with a blank template for custom logic
 
-### Common SVM (Solana) Templates
-- **tokenBalances** (camelCase) - Track SPL token balances
-- **custom** - Start with a blank template for custom logic
-
-**Note:** Template IDs must use camelCase format when passed to the CLI.
+**CRITICAL**: Template IDs must use camelCase format. Each template has specific required `params` - check the schema.
 
 ## Supported Sinks
-- **ClickHouse** - High-performance analytics database
+- **ClickHouse** - High-performance analytics database (recommended)
 - **PostgreSQL** - Relational database with Drizzle ORM
-- **CSV** - Export to CSV files
+
+**Note:** Memory sink is listed in the schema but not yet implemented in the CLI.
 
 ## How to Use the CLI
 
@@ -57,7 +69,7 @@ npx @iankressin/pipes-cli@latest init --config '{
   "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
-  "templates": [{"templateId": "uniswapV3Swaps"}],
+  "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
   "sink": "clickhouse"
 }'
 ```
@@ -132,12 +144,12 @@ npx @iankressin/pipes-cli@latest init --config '{
   "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
-  "templates": [{"templateId": "uniswapV3Swaps"}],
+  "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
   "sink": "clickhouse"
 }'
 ```
 
-IMPORTANT: Use camelCase for templateId values.
+IMPORTANT: Use camelCase for templateId values. Every template requires a `params` object - check `--schema` for required fields.
 
 ### Step 3: Post-generation Setup (AUTOMATED - Do this AFTER CLI succeeds)
 
@@ -184,14 +196,14 @@ IMPORTANT: Use camelCase for templateId values.
      -d "SELECT 1"
    ```
 
-For complete ClickHouse Cloud deployment guide, see pipes-deploy-clickhouse-cloud skill.
+For complete deployment guide (local Docker or ClickHouse Cloud), see pipes-deploy skill.
 
 ### Step 4: Customization
 
 - For EVM contracts: Update contract addresses in the generated transformer
 - For custom event handling: Modify the transformer logic
 - For database schema: Edit the table definitions
-- For ABI generation: Use pipes-abi skill
+- For ABI generation: See references/ABI_GUIDE.md
 
 ### Step 5: Start and Validate
 
@@ -232,7 +244,7 @@ npx @iankressin/pipes-cli@latest init --config '{
   "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
-  "templates": [{"templateId": "uniswapV3Swaps"}],
+  "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
   "sink": "clickhouse"
 }'
 ```
@@ -282,6 +294,86 @@ For fast iteration during development:
    ```
 
 3. **Once working, expand the range and contracts**
+
+## Key SDK Patterns (Latest)
+
+### Event Parameter Filtering
+
+Filter events by indexed parameters at the source level for maximum performance:
+
+```typescript
+events: {
+  transfers: {
+    event: commonAbis.erc20.events.Transfer,
+    params: {
+      from: ['0x87482e84503639466fad82d1dce97f800a410945'],
+      to: '0x10b32a54eeb05d2c9cd1423b4ad90c3671a2ed5f',
+    },
+  },
+}
+```
+
+### Factory Pattern
+
+Track dynamically created contracts (e.g., Uniswap pools). Use `factory()` inside the `contracts` field of `evmDecoder`:
+
+```typescript
+import { evmDecoder, factory, factorySqliteDatabase } from '@subsquid/pipes/evm'
+
+const swaps = evmDecoder({
+  range: { from: '12,369,621' },
+  contracts: factory({
+    address: ['0x1f98431c8ad98523631ae4a59f267346ea31f984'],
+    event: factoryEvents.PoolCreated,
+    parameter: 'pool',
+    database: await factorySqliteDatabase({ path: './factory-pools.sqlite' }),
+  }),
+  events: {
+    swaps: poolEvents.Swap,
+  },
+})
+```
+
+### Combining Multiple Decoders
+
+Use `.pipeComposite()` to run multiple named decoders in a single pipeline:
+
+```typescript
+const stream = evmPortalSource({ portal: '...' }).pipeComposite({
+  transfers: evmDecoder({ events: { transfers: commonAbis.erc20.events.Transfer } }),
+  swaps: evmDecoder({ events: { swaps: uniswapV3Abi.events.Swap } }),
+})
+```
+
+### Target Configuration (ClickHouse)
+
+```typescript
+import { clickhouseTarget } from '@subsquid/pipes/targets/clickhouse'
+
+stream.pipeTo(clickhouseTarget({
+  client: createClient({ url: process.env.CLICKHOUSE_URL }),
+  onData: async (ctx, data) => {
+    await ctx.insert('transfers', data.transfers)
+  },
+  onRollback: async (ctx, range) => {
+    // Handle chain reorgs
+  },
+}))
+```
+
+### Target Configuration (PostgreSQL with Drizzle)
+
+```typescript
+import { drizzleTarget } from '@subsquid/pipes/targets/drizzle/node-postgres'
+
+stream.pipeTo(drizzleTarget({
+  db: drizzle(pool),
+  tables: [transfersTable],
+  onData: async (ctx, data) => {
+    await ctx.db.insert(transfersTable).values(data.transfers)
+  },
+}))
+```
 
 ## Pipes Best Practices
 
@@ -390,36 +482,31 @@ Always validate indexed data before production use:
 
 ## Related Skills
 
-- See pipes-orchestrator for workflow guidance - Mandatory 7-step workflow
-- [pipes-orchestrator](../pipes-orchestrator/SKILL.md) - Routes to this skill
 - See ENVIRONMENT_SETUP.md for setup verification - Verify environment first
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix issues
-- [pipes-template-dex-swaps](../pipes-template-dex-swaps/SKILL.md) - DEX template details
-- [pipes-deploy-clickhouse-cloud](../pipes-deploy-clickhouse-cloud/SKILL.md) - Cloud deployment
+- [pipes-deploy](../pipes-deploy/SKILL.md) - Local and cloud deployment
 
 ## Related Documentation
 
 This skill includes comprehensive reference documentation in the `references/` directory:
 
 - **[ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md)** - Development environment setup guide, prerequisites check, platform-specific notes, and troubleshooting
+- **[ABI_GUIDE.md](references/ABI_GUIDE.md)** - Fetching contract ABIs, `commonAbis` usage, proxy contract detection and handling, TypeScript type generation
+- **[SCHEMA_GUIDE.md](references/SCHEMA_GUIDE.md)** - ClickHouse engine selection, ORDER BY strategy, BigInt handling, partitioning patterns
+- **[RESEARCH_CHECKLIST.md](references/RESEARCH_CHECKLIST.md)** - Protocol research workflow, contract discovery, deployment block finding, common gotchas
 
 ### How to Access
 
 ```bash
-# Read environment setup guide
-cat pipes-sdk/pipes-new-indexer/references/ENVIRONMENT_SETUP.md
-```
-
-Or use Claude Code's Read tool:
-```
-Read: pipes-sdk/pipes-new-indexer/references/ENVIRONMENT_SETUP.md
+cat pipes-sdk/pipes-new-indexer/references/ABI_GUIDE.md
+cat pipes-sdk/pipes-new-indexer/references/SCHEMA_GUIDE.md
+cat pipes-sdk/pipes-new-indexer/references/RESEARCH_CHECKLIST.md
 ```
 
 ### Additional Resources
 
 For comprehensive patterns and workflows:
 - [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - EVM patterns, troubleshooting, and performance optimization
-- [Orchestrator workflow section](../pipes-orchestrator/SKILL.md#pipes-indexer-workflow-7-steps) - Mandatory 7-step workflow
 
 ### Official Subsquid Documentation
 - **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Pipes SDK

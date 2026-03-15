@@ -109,8 +109,8 @@ Skills are automatically available once installed. The agent will use them when 
 
 Some skills require MCP (Model Context Protocol) servers:
 
-- **ClickHouse MCP**: For `pipes-validation`, `pipes-deploy-clickhouse-local`
-- **ClickHouse Cloud MCP**: For `pipes-deploy-clickhouse-cloud`
+- **ClickHouse MCP**: For `pipes-validation`, `pipes-deploy` (local Docker)
+- **ClickHouse Cloud MCP**: For `pipes-deploy` (ClickHouse Cloud)
 - **Railway MCP**: For `pipes-deploy-railway`
 
 These are configured in `.claude/settings.json` at the project level, not within individual skills.

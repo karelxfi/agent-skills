@@ -4,7 +4,7 @@ description: Construct SQD Portal Stream API queries for EVM event logs. Track t
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
-  version: "1.0.0"
+  version: "2.0.0"
   category: portal-core
 ---
 
@@ -48,13 +48,13 @@ Portal Stream API uses POST requests with JSON payloads to `/datasets/{dataset-n
 ```
 
 **Field explanations:**
-- `type: "evm"` - Required for EVM chains
+- `type: "evm"` - **Required for EVM chains**
 - `fromBlock/toBlock` - Block range (required)
 - `logs` - Array of log filter objects
 - `address` - Contract addresses to filter (INDEXED - fast)
 - `topic0` - Event signature hash (INDEXED - fast)
 - `topic1/2/3` - Indexed event parameters (INDEXED - fast)
-- `fields` - Which fields to include in response (optimize payload size)
+- `fields` - Which fields to include in response
 
 ---
 
@@ -75,16 +75,19 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
 **Key rules:**
 1. `topic0` is ALWAYS the event signature hash
 2. `topic1-3` are indexed parameters in declaration order
-3. Non-indexed parameters go in `data` field
-4. Anonymous events don't have topic0 (rare)
+3. Non-indexed parameters go in `data` field (not filterable)
+
+**Addresses in topics must be padded to 32 bytes:**
+```
+Original: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+Padded:   0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+```
 
 ---
 
 ## Examples
 
 ### Example 1: Track USDC Transfers on Base
-
-**Use case:** Monitor all USDC transfer events on Base mainnet.
 
 ```json
 {
@@ -100,22 +103,18 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
       "address": true,
       "topics": true,
       "data": true,
-      "transactionHash": true,
-      "blockNumber": true
-    }
+      "transactionHash": true
+    },
+    "block": {"number": true}
   }
 }
 ```
 
-**Dataset:** `base-mainnet`
-**Contract:** USDC on Base (0x833589fcd6edb6e08f4c7c32d4f71b54bda02913)
-**Event:** Transfer(address indexed from, address indexed to, uint256 amount)
+**Dataset:** `base-mainnet` | **Contract:** USDC on Base | **Event:** Transfer(address indexed from, address indexed to, uint256 amount)
 
 ---
 
 ### Example 2: Find Transfers FROM Specific Address
-
-**Use case:** Track all ERC20 transfers sent by a specific wallet.
 
 ```json
 {
@@ -135,16 +134,11 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
 }
 ```
 
-**Notes:**
-- `topic1` = sender address (vitalik.eth)
-- Address is padded to 32 bytes with leading zeros
-- Omitting `address` filter searches ALL contracts (slower but comprehensive)
+**Notes:** `topic1` = sender address (padded to 32 bytes). Omitting `address` filter searches ALL contracts.
 
 ---
 
 ### Example 3: Uniswap V3 Swap Events
-
-**Use case:** Track Uniswap V3 pool swap events on Ethereum.
 
 ```json
 {
@@ -160,22 +154,19 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
       "address": true,
       "topics": true,
       "data": true,
-      "blockNumber": true,
       "transactionHash": true
-    }
+    },
+    "block": {"number": true}
   }
 }
 ```
 
-**Dataset:** `ethereum-mainnet`
-**Contract:** USDC/WETH 0.05% pool
+**Dataset:** `ethereum-mainnet` | **Contract:** USDC/WETH 0.05% pool
 **Event:** Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)
 
 ---
 
 ### Example 4: Multiple Event Types from Same Contract
-
-**Use case:** Track both Deposit and Withdraw events from Aave lending pool.
 
 ```json
 {
@@ -201,374 +192,91 @@ event Transfer(address indexed from, address indexed to, uint256 amount);
 }
 ```
 
-**Notes:**
-- Multiple filter objects in `logs` array = OR logic
-- Both Deposit and Withdraw events will be returned
-- Same contract address for both filters
+**Contract:** Aave V3 Pool | **Events:** Deposit + Withdraw
+**Notes:** Multiple filter objects in `logs` array = OR logic (both events returned)
+
+> **More examples:** See `references/additional-examples.md` for NFT transfers, multi-token queries, NFT minting, ERC-1155, and multi-collection tracking.
 
 ---
 
-### Example 5: NFT Transfers to Specific Address
-
-**Use case:** Track NFT transfers to a specific wallet address.
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 17000000,
-  "toBlock": 17001000,
-  "logs": [{
-    "address": ["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"],
-    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
-    "topic2": ["0x000000000000000000000000742d35cc6634c0532925a3b844bc454e4438f44e"]
-  }],
-  "fields": {
-    "log": {
-      "address": true,
-      "topics": true,
-      "data": true,
-      "transactionHash": true,
-      "blockNumber": true
-    }
-  }
-}
-```
-
-**Dataset:** `ethereum-mainnet`
-**Contract:** Bored Ape Yacht Club
-**Event:** Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
-**Filter:** NFTs transferred TO a specific address (topic2)
-**Notes:**
-- ERC721 Transfer events have 3 indexed parameters: `from`, `to`, `tokenId`
-- `topic1` = from address, `topic2` = to address, `topic3` = token ID
-- Compare with ERC20: only 2 indexed parameters (`from`, `to`), amount is in `data`
-
----
-
-### Example 6: Query Multiple ERC-20 Tokens Simultaneously
-
-**Use case:** Track transfers across multiple stablecoins (USDC, USDT, DAI) in one query.
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 18000000,
-  "toBlock": 18010000,
-  "logs": [{
-    "address": [
-      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "0x6B175474E89094C44Da98b954EedeAC495271d0F"
-    ],
-    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
-  }],
-  "fields": {
-    "block": {
-      "number": true,
-      "timestamp": true
-    },
-    "log": {
-      "address": true,
-      "topics": true,
-      "data": true,
-      "transactionHash": true
-    }
-  }
-}
-```
-
-**Dataset:** `ethereum-mainnet`
-**Contracts:** USDC, USDT, DAI
-**Notes:**
-- Multiple addresses in array = OR logic (matches any of the addresses)
-- Including block fields allows timestamping events
-- Efficient way to track multiple tokens without separate queries
-
----
-
-### Example 7: Monitor NFT Minting Events
-
-**Use case:** Capture NFT creation events (transfers from zero address).
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 18000000,
-  "toBlock": 18010000,
-  "logs": [{
-    "address": ["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"],
-    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
-    "topic1": ["0x0000000000000000000000000000000000000000000000000000000000000000"]
-  }],
-  "fields": {
-    "log": {
-      "address": true,
-      "topics": true,
-      "transactionHash": true,
-      "blockNumber": true
-    }
-  }
-}
-```
-
-**Dataset:** `ethereum-mainnet`
-**Contract:** Bored Ape Yacht Club
-**Notes:**
-- Minting is represented as a transfer from the zero address
-- `topic1` = zero address (0x000...000 padded to 32 bytes)
-- `topic2` = recipient address (minter)
-- `topic3` = token ID
-
----
-
-### Example 8: Track ERC-1155 Multi-Token Transfers
-
-**Use case:** Monitor ERC-1155 TransferSingle and TransferBatch events.
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 18000000,
-  "toBlock": 18010000,
-  "logs": [{
-    "address": ["0x495f947276749Ce646f68AC8c248420045cb7b5e"],
-    "topic0": [
-      "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62",
-      "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb"
-    ]
-  }],
-  "fields": {
-    "log": {
-      "address": true,
-      "topics": true,
-      "data": true
-    }
-  }
-}
-```
-
-**Dataset:** `ethereum-mainnet`
-**Contract:** OpenSea Shared Storefront (ERC-1155)
-**Event Signatures:**
-- TransferSingle: `0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62`
-- TransferBatch: `0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb`
-
-**Notes:**
-- ERC-1155 uses separate signatures for single vs batch transfers
-- Both signatures must be queried to capture complete transfer activity
-- `data` field contains encoded quantity information
-
----
-
-### Example 9: Monitor Multiple NFT Collections
-
-**Use case:** Track transfers across popular NFT collections (BAYC, MAYC, CryptoPunks).
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 18000000,
-  "toBlock": 18010000,
-  "logs": [{
-    "address": [
-      "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
-      "0x60E4d786628Fea6478F785A6d7e704777c86a7c6",
-      "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
-    ],
-    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
-  }],
-  "fields": {
-    "block": {
-      "number": true,
-      "timestamp": true
-    },
-    "log": {
-      "address": true,
-      "topics": true,
-      "transactionHash": true
-    }
-  }
-}
-```
-
-**Dataset:** `ethereum-mainnet`
-**Contracts:** BAYC, MAYC, CryptoPunks
-**Notes:**
-- Multi-collection filtering with single query
-- Transfer event signature uniform across ERC-721 contracts
-- Indexed parameters contain from, to, and tokenID
-
----
-
-## Key Concepts
-
-### 1. Indexed vs Non-Indexed Parameters
-
-**Indexed parameters (up to 3):**
-- Stored in `topic1`, `topic2`, `topic3`
-- Filterable via Portal API
-- Padded to 32 bytes
-- Fast to query
-
-**Non-indexed parameters:**
-- Stored in `data` field (ABI-encoded)
-- NOT filterable via Portal API
-- Must decode client-side
-- Smaller storage footprint
-
-**Rule:** Use indexed parameters for fields you need to filter by.
-
----
-
-### 2. Filter Performance Optimization
+## Filter Performance
 
 **Field index status:**
-- `address` - INDEXED (fast)
-- `topic0` - INDEXED (fast)
-- `topic1/2/3` - INDEXED (fast)
-- `data` - NOT INDEXED (can't filter)
-- `blockNumber` - INDEXED (fast)
-- `transactionIndex` - INDEXED (fast)
+- `address` - INDEXED (fast) - always add if you know the contract
+- `topic0` - INDEXED (fast) - add for specific events
+- `topic1/2/3` - INDEXED (fast) - add for further narrowing
+- `data` - NOT INDEXED (cannot filter)
 
 **Best practices:**
-1. Always filter by `address` if you know the contract (10-100x faster)
-2. Add `topic0` filter for specific events (another 10x faster)
+1. Always filter by `address` if known (10-100x faster)
+2. Add `topic0` for specific events (another 10x faster)
 3. Add topic1-3 filters for further narrowing
 4. Use narrow block ranges when possible
 
-**Performance comparison:**
-```
-No filters: 1M+ logs/sec → Timeout risk
-address only: ~100K logs/sec → Usually safe
-address + topic0: ~10K logs/sec → Fast
-address + topic0 + topic1: <1K logs/sec → Very fast
-```
-
 ---
 
-### 3. Field Selection Strategy
-
-**Minimize payload size by requesting only needed fields:**
+## Log Response Fields
 
 ```json
 {
-  "fields": {
-    "log": {
-      "address": true,        // Contract address
-      "topics": true,         // All topics array
-      "data": true,           // Event data
-      "transactionHash": true,// Tx hash
-      "blockNumber": true,    // Block number
-      "logIndex": true,       // Position in block
-      "removed": true         // Chain reorg flag
-    }
-  }
+  "logIndex": true,        // Position in block
+  "transactionIndex": true,// Transaction position in block
+  "transactionHash": true, // Tx hash
+  "address": true,         // Contract address
+  "data": true,            // Event data (non-indexed params, ABI-encoded)
+  "topics": true           // All topics array [topic0, topic1, topic2, topic3]
 }
 ```
 
-**Common minimal field sets:**
-- Event tracking: `address`, `topics`, `data`, `transactionHash`
-- Volume analysis: `address`, `topics`, `blockNumber`
-- Full context: all fields
-
-**Note:** Requesting fewer fields = smaller response = faster transfer.
-
----
-
-### 4. Topic Padding Rules
-
-**Addresses in topics must be padded to 32 bytes:**
-
-```
-Original: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
-Padded:   0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045
-```
-
-**Padding rules:**
-- Addresses: left-pad with zeros (24 zeros + 20-byte address)
-- uint256: already 32 bytes (no padding needed)
-- uint8/16/32/etc: left-pad with zeros
-- bytes32: no padding needed
-
-**Tool:** Use ethers.js `zeroPadValue()` or manually pad.
+**Note:** `topics` returns all topics as an array. Request only needed fields to reduce response size.
 
 ---
 
 ## Common Mistakes
 
-### ❌ Mistake 1: Filtering by Non-Indexed Parameter
+### ❌ Filtering by Non-Indexed Parameter
 
 ```json
-{
-  "logs": [{
-    "address": ["0x..."],
-    "topic0": ["0x..."],
-    "data": ["0x1234..."]  // ❌ Can't filter by data
-  }]
-}
+{"logs": [{"data": ["0x1234..."]}]}  // ❌ Can't filter by data
 ```
-
-**Fix:** Only topic0-3 are filterable. To filter by non-indexed params, fetch all events and filter client-side.
+**Fix:** Only topic0-3 are filterable. Fetch all events and filter `data` client-side.
 
 ---
 
-### ❌ Mistake 2: Forgetting Topic Padding
+### ❌ Forgetting Topic Padding
 
 ```json
-{
-  "topic1": ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]  // ❌ Not padded
-}
+{"topic1": ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]}  // ❌ Not padded
 ```
+**Fix:** Pad addresses to 32 bytes: `"0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045"`
 
-**Fix:** Always pad addresses to 32 bytes:
-```json
-{
-  "topic1": ["0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]
-}
+---
+
+### ❌ Using Wrong Event Signature
+
+Compute correct keccak256 hash with no spaces and exact types:
+```javascript
+ethers.id("Transfer(address,address,uint256)")  // ✅ correct
+ethers.id("Transfer(address, address, uint256)")  // ❌ spaces cause wrong hash
 ```
 
 ---
 
-### ❌ Mistake 3: Using Wrong Event Signature
+### ❌ Too Broad Query (No Filters)
 
 ```json
-{
-  "topic0": ["0x123..."]  // ❌ Incorrect hash
-}
+{"type": "evm", "fromBlock": 0, "logs": [{}]}  // ❌ Millions of logs
 ```
-
-**Fix:** Compute correct keccak256 hash:
-- Function: `Transfer(address,address,uint256)`
-- No spaces, exact types
-- Use ethers.js: `ethers.id("Transfer(address,address,uint256)")`
-
----
-
-### ❌ Mistake 4: Too Broad Query (No Filters)
-
-```json
-{
-  "type": "evm",
-  "fromBlock": 0,
-  "logs": [{}]  // ❌ No filters = millions of logs
-}
-```
-
 **Fix:** Always filter by at least `address` or `topic0`, and use reasonable block ranges.
 
 ---
 
-### ❌ Mistake 5: Wrong Dataset Name
+### ❌ Wrong Dataset Name
 
-```json
-// POST /datasets/arbitrum/stream  ❌ Wrong name
 ```
-
-**Fix:** Use correct Portal dataset names:
-- `ethereum-mainnet` (not "ethereum")
-- `arbitrum-one` (not "arbitrum")
-- `base-mainnet` (not "base")
-
+POST /datasets/arbitrum/stream  // ❌ Wrong name
+POST /datasets/arbitrum-one/stream  // ✅ Correct
+```
 See **portal-dataset-discovery** skill for full mapping.
 
 ---
@@ -578,16 +286,11 @@ See **portal-dataset-discovery** skill for full mapping.
 Portal returns **JSON Lines** (one JSON object per line):
 
 ```json
-{"header":{"blockNumber":19500000,"hash":"0x...","parentHash":"0x...","timestamp":1234567890}}
+{"header":{"number":19500000,"hash":"0x...","parentHash":"0x...","timestamp":1234567890}}
 {"logs":[{"address":"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913","topics":["0xddf252ad...","0x000...123","0x000...456"],"data":"0x000...789","transactionHash":"0xabc...","logIndex":42}]}
-{"logs":[{"address":"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913","topics":["0xddf252ad...","0x000...111","0x000...222"],"data":"0x000...333","transactionHash":"0xdef...","logIndex":18}]}
 ```
 
-**Parsing:**
-1. Split response by newlines
-2. Parse each line as JSON
-3. First line is block header
-4. Subsequent lines contain logs array
+**Parsing:** Split by newlines, parse each line as JSON. First line = block header.
 
 ---
 
@@ -596,24 +299,14 @@ Portal returns **JSON Lines** (one JSON object per line):
 - **portal-query-evm-transactions** - Query transactions that emitted these logs
 - **portal-query-evm-traces** - Track internal calls related to events
 - **portal-dataset-discovery** - Find correct dataset name for your chain
-- **pipes-abi** - Get ABI and event signatures for contracts
 
 ---
 
 ## Additional Resources
 
 - **API Documentation:** https://beta.docs.sqd.dev/api/catalog/stream
-- **Schema Reference:** https://github.com/subsquid/sqd-portal/blob/master/resources/schemas.json
-- **Event Signature Calculator:** https://www.4byte.directory/
-
-## Official Subsquid Documentation
-
-### Core Documentation
 - **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API logs querying
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
-- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Comprehensive Portal API guide
-
-### API Resources
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/files/evm-openapi.yaml)** - Complete logs query specification
+- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Complete logs query specification
 - **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks
-- **[EVM Stream API](https://beta.docs.sqd.dev/api/catalog/stream)** - Logs query documentation
+- **Event Signature Calculator:** https://www.4byte.directory/

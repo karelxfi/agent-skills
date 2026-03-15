@@ -2,7 +2,7 @@
 
 ![Experimental](https://img.shields.io/badge/experimental-blue)
 
-12 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
+4 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
 
 ## Installation
 
@@ -22,33 +22,15 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk
 
 | Skill | Use Case |
 |-------|----------|
-| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM and Solana chains |
-| **pipes-orchestrator** | Routes indexer requests to specialized agents and coordinates multi-agent workflows |
+| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM and Solana chains; includes ABI fetching, schema design, and protocol research guides |
 | **pipes-troubleshooting** | Diagnose and fix runtime errors in blockchain indexers |
 | **pipes-performance** | Analyze and optimize indexer sync performance |
-| **pipes-abi** | Fetch, analyze, and manage contract ABIs for EVM chains |
 
 ### Deployment Skills
 
 | Skill | Use Case |
 |-------|----------|
-| **pipes-deploy-clickhouse-cloud** | Deploy indexers to ClickHouse Cloud with production configuration |
-| **pipes-deploy-clickhouse-local** | Deploy indexers to local ClickHouse (Docker) for development |
-| **pipes-deployment** | Complete deployment guides for all platforms (ClickHouse Cloud, local, Railway) |
-
-### Schema Design
-
-| Skill | Use Case |
-|-------|----------|
-| **pipes-schema-design** | Design optimal database schemas for blockchain data (ClickHouse and PostgreSQL) |
-
-### Templates for AI agents to use
-
-| Skill | Use Case |
-|-------|----------|
-| **pipes-template-dex-swaps** | Production template for DEX swap indexing (Uniswap, SushiSwap, PancakeSwap) |
-| **pipes-template-nft-transfers** | Production template for tracking NFT transfers (ERC-721) |
-| **pipes-template-lending-protocol** | Production template for lending protocols (Aave V3, Compound V3, Morpho) |
+| **pipes-deploy** | Deploy indexers to local ClickHouse (Docker) for development or ClickHouse Cloud for production |
 
 ## Usage
 
@@ -58,8 +40,7 @@ Skills are automatically available once installed. The agent will use them when 
 - "Create a new indexer for USDC transfers on Ethereum"
 - "My indexer is syncing slowly, help me optimize it"
 - "Deploy my indexer to ClickHouse Cloud"
-- "Get the ABI for the Uniswap V3 router"
-- "Design a schema for tracking Aave V3 lending events"
+- "Create an indexer for Uniswap V3 swaps - help me fetch the ABI and design the schema"
 
 ## Quick Start
 
@@ -67,7 +48,7 @@ Skills are automatically available once installed. The agent will use them when 
    ```
    Create a DEX swap indexer for Uniswap V3 on Base
    ```
-   Uses: `pipes-new-indexer`, `pipes-template-dex-swaps`
+   Uses: `pipes-new-indexer`
 
 2. **Debug issues:**
    ```
@@ -85,7 +66,7 @@ Skills are automatically available once installed. The agent will use them when 
    ```
    Deploy my indexer to ClickHouse Cloud
    ```
-   Uses: `pipes-deploy-clickhouse-cloud`
+   Uses: `pipes-deploy`
 
 ## Skill Structure
 
