@@ -42,6 +42,10 @@ docker run -d \
   clickhouse/clickhouse-server:latest
 ```
 
+**macOS alternative: OrbStack**
+
+[OrbStack](https://orbstack.dev/) is a lightweight Docker Desktop replacement for macOS. It uses fewer resources and starts faster. If you use OrbStack, all `docker` commands work identically — no changes needed. The docker binary is at `/Applications/OrbStack.app/Contents/MacOS/xbin/docker`.
+
 ### Setup Steps
 
 **Step 1: Detect or create container**
@@ -100,6 +104,13 @@ CLICKHOUSE_DATABASE=<database-name>
 CLICKHOUSE_USER=default
 CLICKHOUSE_PASSWORD=<password>
 ```
+
+**Password Convention Warning:**
+- The CLI-generated `docker-compose.yml` and `.env` both use `password`
+- Standalone `docker run` commands (in this doc and ENVIRONMENT_SETUP.md) use `default`
+- If using the generated `docker-compose.yml`, keep `password` — it is internally consistent
+- If connecting to an existing standalone container, check: `docker inspect <container> | grep CLICKHOUSE_PASSWORD`
+- Mismatched passwords cause: `ClickHouseError: Authentication failed: password is incorrect`
 
 **Step 6: Start indexer**
 
@@ -361,6 +372,20 @@ docker stop clickhouse && docker rm clickhouse
 2. Drop sync table (Step 4 in either workflow)
 3. Restart indexer
 4. Verify first log line shows correct start block
+5. After restart, watch the first 10 seconds of logs:
+   ```bash
+   bun run dev 2>&1 | head -20
+   ```
+   Confirm it says "Start indexing from [your-configured-block]" not "Resuming from [old-block]".
+6. After 30 seconds, verify data is flowing:
+   ```bash
+   docker exec $CONTAINER_NAME clickhouse-client \
+     --password "$CLICKHOUSE_PASSWORD" \
+     --database "$DATABASE_NAME" \
+     --query "SELECT COUNT(*) FROM $MAIN_TABLE"
+   ```
+
+**Note on crash recovery**: If your indexer died mid-sync (not a wrong-block issue), "Resuming from X" is **expected and correct**. Only investigate if X doesn't match where you expect to be.
 
 ### Zero Data After 30 Seconds
 
@@ -399,7 +424,7 @@ diff /tmp/schema_tables.txt /tmp/code_tables.txt
 
 ## Best Practices
 
-- **Use dedicated databases per indexer** (`uniswap_base`, `morpho_ethereum`) to avoid sync table conflicts
+- **CRITICAL: Use dedicated databases per indexer** (`uniswap_base`, `morpho_ethereum`). All indexers write to `{database}.sync` with `id = 'stream'` — sharing a database means the second indexer resumes from the first's position
 - **Local**: Use named containers (`clickhouse-dev`, `clickhouse-test`) and add `-v clickhouse-data:/var/lib/clickhouse` for data persistence
 - **Cloud**: Store passwords in a password manager; use environment variables, not hardcoded values
 - **Cloud cost**: Start with recent blocks for testing; monitor storage in the Cloud console

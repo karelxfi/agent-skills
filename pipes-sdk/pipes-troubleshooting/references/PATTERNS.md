@@ -202,6 +202,43 @@ clickhouseTarget({
 })
 ```
 
+### 6. CLI `ora` ESM/CJS Crash on Init
+
+**ERROR**: `(0 , import_ora.default) is not a function`
+
+**Cause**: CLI bundles `ora` v6+ (ESM-only) as CJS. The `__toESM(require("ora"))` wrapper fails.
+
+**Only affects**: `init` command. `--schema` and `--version` work fine.
+
+**Solution**: Patch the cached CLI bundle:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
+```
+
+## Common Issues and Solutions (Continued)
+
+### Issue 7: Indexer Crashed Mid-Sync — How to Resume
+
+**Symptoms**: Process was killed (OOM, terminal closed, machine restart). Partial data exists.
+
+**Solution**: The sync table tracks progress. Simply restart:
+```bash
+cd <project-folder>
+bun run dev
+```
+
+The indexer reads the sync table and resumes from the last committed block. Verify the "Resuming from X" log line shows the expected block.
+
+**If you want a clean restart instead**:
+```bash
+docker exec <container> clickhouse-client --password <pw> \
+  --query "DROP TABLE IF EXISTS pipes.sync; DROP TABLE IF EXISTS pipes.<your_table>"
+bun run dev
+```
+
+**Note**: On first-ever start, the sync table does not exist yet. The SDK logs an error (`Unknown table expression identifier 'pipes.sync'`) and then creates it. This is harmless — do not treat it as a failure.
+
 ## Performance Optimization
 
 ### Throughput Benchmarks
@@ -373,6 +410,45 @@ for await (const { data } of stream) {
 npx @subsquid/evm-typegen@latest src/contracts \
   0xYourContractAddress \
   --chain-id 1
+```
+
+### Issue 8: Sync Table Conflict Between Indexers
+
+**Symptoms**: Second indexer resumes from wrong block, produces wrong data or no data
+
+**Cause**: All indexers write to `{database}.sync` with `id = 'stream'`. Sharing a database means the second indexer picks up the first's sync position.
+
+**Solution**: Use a dedicated database per indexer project:
+```bash
+# Create separate databases
+docker exec <container> clickhouse-client --password <pw> \
+  --query "CREATE DATABASE IF NOT EXISTS usdc_transfers"
+docker exec <container> clickhouse-client --password <pw> \
+  --query "CREATE DATABASE IF NOT EXISTS uniswap_swaps"
+```
+
+If you must share a database, drop the sync table between indexer runs:
+```bash
+docker exec <container> clickhouse-client --password <pw> \
+  --query "DROP TABLE IF EXISTS <database>.sync"
+```
+
+### Issue 9: Custom Template Table Names
+
+**Symptoms**: Querying `{contractName}_events` returns "table not found"
+
+**Cause**: The custom template creates **one table per event**, named `{contractName}_{eventName}` in snake_case. There is no combined events table.
+
+**Example**: Contract "WETH" with events "Deposit" and "Withdrawal" creates:
+- `weth_deposit` (not `weth_events`)
+- `weth_withdrawal`
+
+**Solution**: Query each table separately, or create a VIEW to combine them:
+```sql
+CREATE VIEW weth_events AS
+  SELECT 'deposit' as event_type, dst as address, wad, block_number, tx_hash, timestamp FROM weth_deposit
+  UNION ALL
+  SELECT 'withdrawal' as event_type, src as address, wad, block_number, tx_hash, timestamp FROM weth_withdrawal
 ```
 
 ## Pattern Selection Guide

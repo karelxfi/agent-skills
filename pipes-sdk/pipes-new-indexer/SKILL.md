@@ -33,18 +33,20 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 
 **erc20Transfers** - Track ERC20 token transfers:
 ```json
-{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}
+{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"], "range": {"from": "21000000"}}}
 ```
 
 **uniswapV3Swaps** - Track Uniswap V3 swap events via factory pattern:
 ```json
-{"templateId": "uniswapV3Swaps", "params": {"factoryAddress": "0x1F98431c8aD98523631AE4a59f267346ea31F984"}}
+{"templateId": "uniswapV3Swaps", "params": {"factoryAddress": "0x1F98431c8aD98523631AE4a59f267346ea31F984", "range": {"from": "21000000"}}}
 ```
 
-**custom** - Custom contract events (requires full event ABI):
+**custom** - Custom contract events (**requires full ABI event objects, NOT just event names**):
 ```json
-{"templateId": "custom", "params": {"contracts": [{"contractAddress": "0x...", "contractName": "MyContract", "contractEvents": [{"name": "Transfer", "type": "event", "inputs": [{"name": "from", "type": "address"}, {"name": "to", "type": "address"}, {"name": "value", "type": "uint256"}]}]}]}}
+{"templateId": "custom", "params": {"contracts": [{"contractAddress": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "contractName": "WETH", "contractEvents": [{"name": "Deposit", "type": "event", "inputs": [{"name": "dst", "type": "address", "indexed": true}, {"name": "wad", "type": "uint256"}]}, {"name": "Withdrawal", "type": "event", "inputs": [{"name": "src", "type": "address", "indexed": true}, {"name": "wad", "type": "uint256"}]}], "range": {"from": "21000000"}}]}}
 ```
+
+**COMMON MISTAKE**: Passing `"contractEvents": ["Deposit", "Withdrawal"]` (just names) will fail with `Invalid input: expected array, received undefined`. Each event must be a full ABI object with `name`, `type`, and `inputs` fields. For indexed parameters, include `"indexed": true`.
 
 ### SVM (Solana) Templates
 - **custom** - Start with a blank template for custom logic
@@ -57,7 +59,50 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 
 **Note:** Memory sink is listed in the schema but not yet implemented in the CLI.
 
+## Node.js Version Requirement
+
+**Use Node.js LTS (v20 or v22).** Node.js v25.x has known zstd decompression bugs that cause random crashes during Portal data streaming. If `node --version` shows v25.x, switch to LTS:
+
+```bash
+# Option 1: nvm (if installed)
+nvm install 22
+nvm use 22
+
+# Option 2: Homebrew (macOS)
+brew install node@22
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+
+# Option 3: Direct download
+# Visit https://nodejs.org/ and install the LTS version
+```
+
+If you cannot switch Node versions, the indexer may still work for smaller syncs. The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks, v25 often works.
+
 ## How to Use the CLI
+
+### CLI Known Issue: `ora` ESM/CJS Crash
+
+The CLI `init` command may crash with `(0 , import_ora.default) is not a function`. This is because the CLI bundles ESM-only `ora` v6+ as CJS. The `--schema` and `--version` commands still work.
+
+**Workaround**: Patch the cached CLI bundle:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
+```
+
+Then re-run the `init` command.
+
+**WARNING: `npx` may re-download the CLI and overwrite your patch.** Always verify the patch before running `init`:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+if [ -z "$CLI_PATH" ]; then
+  echo "CLI not cached yet — run any npx pipes-cli command first, then patch"
+elif grep -q 'import_ora = { default: function' "$CLI_PATH"; then
+  echo "Patch is in place"
+else
+  echo "Patch missing — re-apply the workaround above"
+fi
+```
 
 ### Programmatic Mode (RECOMMENDED for Claude Code)
 
@@ -91,6 +136,18 @@ This displays:
 - Required and optional parameters for each template
 - Sink-specific configurations
 - Network options
+
+### Template ID to Parameters Mapping
+
+The `--schema` output uses an `anyOf` structure without discriminators. Here is the mapping:
+
+| templateId | Required params | Description |
+|------------|----------------|-------------|
+| `custom` | `contracts` (array of `{contractAddress, contractName, contractEvents, range}`) | Custom contract events with full ABI |
+| `erc20Transfers` | `contractAddresses` (array of address strings), `range` | ERC20 Transfer events |
+| `uniswapV3Swaps` | `factoryAddress` (single address string), `range` | Uniswap V3 swaps via factory pattern |
+
+**Known issue**: The schema `anyOf` variants do not include `const` discriminators on `templateId`. Match by the `params` property names (`contracts` vs `contractAddresses` vs `factoryAddress`).
 
 ## Critical Rule: NEVER MANUALLY CREATE INDEXER FILES
 
@@ -153,25 +210,34 @@ IMPORTANT: Use camelCase for templateId values. Every template requires a `param
 
 ### Step 3: Post-generation Setup (AUTOMATED - Do this AFTER CLI succeeds)
 
+**CRITICAL: Use a separate database per indexer project.** All indexers write their sync state to `{database}.sync` with `id = 'stream'`. If two indexers share a database, the second one resumes from the first's position, causing wrong data or missing events.
+
+```bash
+# Good: dedicated database per project
+docker exec <container> clickhouse-client --password <pw> \
+  --query "CREATE DATABASE IF NOT EXISTS usdc_transfers"
+# Then set CLICKHOUSE_DATABASE=usdc_transfers in .env
+
+# Bad: all indexers in 'pipes' database — sync table conflicts
+```
+
 **If using ClickHouse (Local Docker)**:
 - Get the actual password from existing container OR use "default" if creating new
-- Create the database:
+- Create a **dedicated database** for this indexer:
   ```bash
-  docker exec <container-name> clickhouse-client --query "CREATE DATABASE IF NOT EXISTS pipes"
+  docker exec <container-name> clickhouse-client --password <pw> \
+    --query "CREATE DATABASE IF NOT EXISTS <indexer-specific-db-name>"
   ```
-- Update the .env file with correct password:
+- Update the .env file with correct password AND database:
   ```bash
   sed -i '' 's/CLICKHOUSE_PASSWORD=.*/CLICKHOUSE_PASSWORD=<actual-password>/' <project-folder>/.env
+  sed -i '' 's/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=<indexer-specific-db-name>/' <project-folder>/.env
   ```
-- **CRITICAL - CLEAR SYNC TABLE IF REUSING DATABASE:**
-
-  If you're sharing a ClickHouse database between multiple indexers, ALWAYS clear the sync table:
+- **If you MUST reuse a database**, clear the sync table first:
   ```bash
   docker exec <container-name> clickhouse-client --password <password> \
-    --query "DROP TABLE IF EXISTS pipes.sync"
+    --query "DROP TABLE IF EXISTS <db>.sync"
   ```
-
-  **Why this matters:** Shared sync tables cause indexers to resume from wrong blocks, skip data, or sync incorrect ranges. This is a common source of "missing data" errors.
 
 **If using ClickHouse Cloud**:
 
@@ -198,6 +264,53 @@ IMPORTANT: Use camelCase for templateId values. Every template requires a `param
 
 For complete deployment guide (local Docker or ClickHouse Cloud), see pipes-deploy skill.
 
+### Step 3.5: Post-Generation Verification Checklist
+
+After the CLI generates the project, verify these BEFORE running:
+
+1. **Factory address injected** (uniswapV3Swaps template only):
+   ```bash
+   grep "address:" <project-folder>/src/index.ts
+   # Should show your factory address, NOT an empty string ['']
+   # Known bug: CLI drops the factoryAddress param — fix with:
+   sed -i '' "s|address: \[''\]|address: ['<YOUR_FACTORY_ADDRESS>']|" <project-folder>/src/index.ts
+   ```
+
+2. **ClickHouse password correct**:
+   ```bash
+   grep CLICKHOUSE_PASSWORD <project-folder>/.env
+   # CLI generates "password" — standalone Docker typically uses "default"
+   # If using the generated docker-compose.yml, "password" is correct
+   # If using an existing standalone container, change to match your container
+   ```
+
+3. **Contract addresses present** (custom template):
+   ```bash
+   grep "contracts:" <project-folder>/src/index.ts
+   # Verify your contract address(es) appear in the generated code
+   ```
+
+4. **Know your table names** (custom template):
+   The custom template creates **one table per event**, named `{contractName}_{eventName}` in snake_case.
+   Example: Contract "WETH" with events "Deposit" and "Withdrawal" creates:
+   - `weth_deposit`
+   - `weth_withdrawal`
+
+   There is NO combined `weth_events` table. Query each event table separately.
+
+5. **Contract file naming** (custom template):
+   The generated contract file is named by address, not by `contractName`:
+   ```
+   src/contracts/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2.ts  (not weth.ts)
+   ```
+   This is cosmetic — the file works fine. The import in `src/index.ts` references it correctly.
+
+6. **Database exists**:
+   ```bash
+   docker exec <container> clickhouse-client --password <pw> \
+     --query "SHOW DATABASES" | grep <your-db-name>
+   ```
+
 ### Step 4: Customization
 
 - For EVM contracts: Update contract addresses in the generated transformer
@@ -213,6 +326,33 @@ bun run dev
 ```
 
 **VERIFY START BLOCK** - Check the first log message shows your intended start block, not a resumed block.
+
+**NOTE**: On the very first start, you will see an error about `Unknown table expression identifier 'pipes.sync'`. This is **harmless** — the SDK tries to read the sync table before it exists, then creates it. Ignore this error on first run.
+
+### Resume vs Fresh Start Decision Tree
+
+When you see `"Resuming from block X"` in the logs, use this to decide what to do:
+
+| Scenario | Action |
+|----------|--------|
+| Indexer crashed mid-sync and you want to continue | **Keep it** — resume is correct. Verify X is near where it stopped. |
+| You changed the start block or contract address | **Drop sync** — old sync state is stale. |
+| You're running a different indexer on the same database | **Drop sync** — the sync state belongs to a different indexer. Better yet, use a separate database. |
+| This is a brand new project, first ever run | **Drop sync** — there shouldn't be one. If there is, the database was used by another indexer. |
+| You want to re-index from scratch | **Drop sync AND data tables** — clean slate. |
+
+**How to drop sync:**
+```bash
+docker exec <container> clickhouse-client --password <pw> \
+  --query "DROP TABLE IF EXISTS <database>.sync"
+```
+
+**How to restart after a crash (resume is wanted):**
+```bash
+cd <project-folder>
+bun run dev
+# First log line should say "Resuming from X" where X is near where it stopped
+```
 
 ## Complete Automation Script
 

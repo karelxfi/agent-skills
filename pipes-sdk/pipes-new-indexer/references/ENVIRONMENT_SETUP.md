@@ -14,7 +14,7 @@ This guide helps you:
 
 Before building indexers, ensure you have:
 
-- [ ] Node.js >= 18.0.0
+- [ ] Node.js LTS (v20 or v22 recommended; avoid v25.x)
 - [ ] npm >= 8.0.0 (or bun >= 1.0.0)
 - [ ] Docker running
 - [ ] ClickHouse container (for local development)
@@ -25,7 +25,9 @@ Before building indexers, ensure you have:
 
 ### 1. Node.js
 
-**Required Version**: >= 18.0.0
+**Required Version**: >= 18.0.0 (LTS recommended: v20 or v22)
+
+**WARNING: Avoid Node.js v25.x** — It has known zstd decompression bugs that cause random crashes when streaming data from the Portal API into ClickHouse.
 
 **Check current version**:
 ```bash
@@ -43,15 +45,25 @@ node --version
 # Install nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 
-# Install Node.js LTS
-nvm install --lts
+# Install Node.js 22 LTS (recommended)
+nvm install 22
 
 # Use it
-nvm use --lts
+nvm use 22
+nvm alias default 22
 
 # Verify
 node --version
 ```
+
+**Option C - Using Homebrew (macOS)**:
+```bash
+brew install node@22
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+# Add the export to your shell profile (~/.zshrc or ~/.bashrc) to make it permanent
+```
+
+**If stuck on v25.x**: The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks (~100K), v25 often works. But for production indexing, switch to LTS.
 
 ### 2. Package Manager
 

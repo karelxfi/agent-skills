@@ -166,6 +166,16 @@ Error: Database 'pipes' does not exist
    docker exec -it clickhouse clickhouse-client --query "CREATE DATABASE IF NOT EXISTS pipes"
    ```
 
+### Note: Sync Table Error on First Run (Harmless)
+
+On the very first start of a new indexer, you will see:
+```
+[ERROR][@clickhouse/client][Connection] Query: HTTP request error.
+Caused by: ClickHouseError: Unknown table expression identifier 'pipes.sync'
+```
+
+**This is expected and harmless.** The SDK tries to read the sync table to check for resume state, fails because it doesn't exist yet, then creates it. The indexer will continue normally. Ignore this error on first run.
+
 ### Error Pattern 4: Event Decoding Failed
 
 **Symptoms**:
@@ -233,6 +243,14 @@ TypeError: Cannot read property 'from' of undefined
    .filter((e) => /* check filter logic */)
    ```
 
+5. Check for sync table conflict (shared database):
+   All indexers write to `{database}.sync` with `id = 'stream'`. If another indexer used this database, your indexer resumes from the wrong block.
+   ```bash
+   docker exec <container> clickhouse-client --password <pw> \
+     --query "SELECT * FROM <database>.sync FORMAT Vertical"
+   ```
+   **Fix**: Use a separate database per indexer, or drop the sync table before starting.
+
 ### Error Pattern 6: Memory Issues
 
 **Symptoms**:
@@ -279,6 +297,87 @@ Error: Cannot insert NULL into NOT NULL column
    docker exec clickhouse clickhouse-client --password=default \
      --query "DROP TABLE IF EXISTS pipes.sync"
    ```
+
+### Error Pattern 8: Process Crashed / Indexer Died Mid-Sync
+
+**Symptoms**:
+- Terminal shows process exited
+- `bun run dev` was killed (OOM, Ctrl+C, machine restart)
+- Partial data in database
+
+**Diagnosis**: Normal crash recovery scenario. The sync table tracks progress.
+
+**Fix Steps**:
+1. Simply restart — it will resume automatically:
+   ```bash
+   cd <project-folder>
+   bun run dev
+   ```
+
+2. Verify the "Resuming from X" log line shows a block near where it crashed. This is the one scenario where "Resuming" is expected and correct.
+
+3. If data looks corrupted, drop sync + data tables and start fresh:
+   ```bash
+   docker exec <container> clickhouse-client --password <pw> \
+     --query "DROP TABLE IF EXISTS pipes.sync; DROP TABLE IF EXISTS pipes.<your_table>"
+   ```
+
+### Error Pattern 9: Node.js Version Compatibility Issues
+
+**Symptoms**:
+```
+ZSTD_error_prefix_unknown
+TypeError: terminated (ZstdDecompress)
+```
+Or random crashes during large syncs.
+
+**Diagnosis**: Using Node.js v25+ which has known zstd decompression bugs
+
+**Fix**:
+```bash
+# Check version
+node --version
+
+# If v25.x, switch to LTS:
+# Option 1: nvm
+nvm install 22 && nvm use 22
+
+# Option 2: Homebrew (macOS)
+brew install node@22
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+
+# Option 3: Download from https://nodejs.org/
+
+# Restart indexer
+bun run dev
+```
+
+**If you can't switch versions**: The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks (~100K), v25 often works fine.
+
+**Prevention**: Always use Node.js LTS (v20 or v22) for Pipes SDK projects.
+
+### Error Pattern 10: CLI Crashes on `init` — ora ESM/CJS Error
+
+**Symptoms**:
+```
+[PIPES SDK] Error: (0 , import_ora.default) is not a function
+```
+
+**Diagnosis**: The CLI is bundled as CJS but imports `ora` v6+ which is ESM-only. Only `init` is affected; `--schema` and `--version` work fine.
+
+**Fix**: Patch the CLI bundle to replace ora with a no-op spinner:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
+```
+
+Then re-run the `init` command.
+
+**WARNING**: `npx` may silently re-download and overwrite the patch. Always verify before running `init`:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+grep -q 'import_ora = { default: function' "$CLI_PATH" && echo "Patched" || echo "Needs patching"
+```
 
 ## Data Validation & Quality Checks
 

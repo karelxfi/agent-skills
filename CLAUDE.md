@@ -531,6 +531,49 @@ sed -i '' 's/CLICKHOUSE_PASSWORD=.*/CLICKHOUSE_PASSWORD=default/' .env
 
 ---
 
+## Known CLI Bugs & Workarounds
+
+### 1. `ora` ESM/CJS Crash (P0)
+
+The CLI `init` command crashes with `(0 , import_ora.default) is not a function` because it bundles ESM-only `ora` v6+ as CJS.
+
+**Workaround**: Patch the cached CLI bundle to replace ora with a no-op spinner:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
+```
+
+### 2. uniswapV3Swaps Factory Address Not Injected (P0)
+
+The `factoryAddress` parameter is accepted by the schema but silently dropped during code generation. The generated `src/index.ts` contains `address: ['']`.
+
+**Workaround**: After generation, manually edit `src/index.ts` to insert the factory address:
+```bash
+sed -i '' "s/address: \[''\]/address: ['0xYOUR_FACTORY_ADDRESS']/" <project>/src/index.ts
+```
+
+### 3. Sync Table Error on First Run (P2 - Harmless)
+
+Every fresh indexer logs a scary error: `ClickHouseError: Unknown table expression identifier 'pipes.sync'`. The SDK then creates the table and continues normally. **Ignore this error on first run.**
+
+---
+
+## Node.js Version Recommendation
+
+**Use Node.js LTS (v20 or v22).** Do not use Node.js v25.x — it has known zstd decompression bugs that cause random crashes during Portal data streaming.
+
+```bash
+# Check current version
+node --version
+
+# Switch to LTS if needed
+nvm install 22
+nvm use 22
+nvm alias default 22
+```
+
+---
+
 ## Summary
 
 **The Golden Rule:** If something doesn't work after 2 attempts, explain why and give the user control rather than continuing to try variations.
