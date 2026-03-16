@@ -451,6 +451,57 @@ CREATE VIEW weth_events AS
   SELECT 'withdrawal' as event_type, src as address, wad, block_number, tx_hash, timestamp FROM weth_withdrawal
 ```
 
+### Issue 10: Timestamps Show 1970 Dates in ClickHouse
+
+**Symptoms**: All timestamps in ClickHouse display as `1970-01-28` or similar early dates, even though the indexer is processing recent blocks.
+
+**Cause**: ClickHouse `DateTime` column expects **seconds** since epoch, but `d.timestamp.getTime()` in JavaScript returns **milliseconds**. If you pass milliseconds directly, ClickHouse interprets them as seconds and produces dates in 1970.
+
+**Solution**: Divide by 1000 in your `.pipe()` transform:
+```typescript
+// WRONG
+timestamp: d.timestamp.getTime(),  // milliseconds → 1970 dates
+
+// CORRECT
+timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds → correct dates
+```
+
+**Note**: The auto-generated `enrichEvents` helper handles this correctly. This bug only appears when writing **manual** `.pipe()` transforms (e.g., to access factory metadata).
+
+**Recovery**: If you've already inserted bad timestamps:
+```bash
+# Drop affected tables and sync state
+docker exec <container> clickhouse-client --password <pw> \
+  --query "DROP TABLE IF EXISTS <db>.<table>; DROP TABLE IF EXISTS <db>.sync"
+# If using factory pattern, also delete the SQLite file
+rm <project>/*.sqlite
+# Restart
+bun run dev
+```
+
+### Issue 11: Factory Indexer Shows Zero Data for 30-60+ Seconds
+
+**Symptoms**: Factory-pattern indexer starts successfully, syncs blocks, but produces zero rows in the database for an extended period.
+
+**Cause**: The factory pattern only discovers child contracts from the `range.from` block forward. If the factory hasn't deployed any new child contracts in the blocks being synced, there's nothing to track yet.
+
+**This is expected behavior, not a bug.**
+
+**When to worry vs. when to wait**:
+- If the factory is active (deploying new contracts regularly): wait 60-90 seconds
+- If the factory is inactive (no new deployments in your block range): you'll never get data until the indexer reaches a block where the factory creates a new child
+- If you need ALL historical child contracts: set `range.from` to the factory's deployment block
+
+**Verification**:
+```bash
+# Check if the factory SQLite database is being populated
+ls -la <project>/*.sqlite
+# Size > 0 means child contracts are being discovered
+
+# Check how many child contracts have been found
+sqlite3 <project>/*.sqlite "SELECT COUNT(*) FROM factory_contracts" 2>/dev/null || echo "No contracts yet"
+```
+
 ## Pattern Selection Guide
 
 ### Single Contract Event Tracking

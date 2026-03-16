@@ -251,6 +251,41 @@ TypeError: Cannot read property 'from' of undefined
    ```
    **Fix**: Use a separate database per indexer, or drop the sync table before starting.
 
+### Error Pattern 5b: Factory Indexer Shows Zero Data
+
+**Symptoms**: Factory-pattern indexer runs, syncs blocks, but database has 0 rows for 30-60+ seconds.
+
+**Diagnosis**: The factory pattern only discovers child contracts from `range.from` forward. If no new child contracts were created in the synced blocks, there's no data yet.
+
+**This is expected**, not a bug.
+
+**Fix**:
+- Wait 60-90 seconds — if the factory is active, data will appear
+- To track ALL child contracts, set `range.from` to the factory's deployment block
+- Check the SQLite file size to confirm contracts are being discovered:
+  ```bash
+  ls -la <project>/*.sqlite  # size > 0 = contracts found
+  ```
+
+### Error Pattern 5c: Timestamps Show 1970 Dates
+
+**Symptoms**: All dates in ClickHouse show as `1970-01-28` or similar
+
+**Diagnosis**: Passing milliseconds instead of seconds to a `DateTime` column
+
+**Fix**: Divide `getTime()` by 1000 in your `.pipe()` transform:
+```typescript
+// WRONG
+timestamp: d.timestamp.getTime(),
+
+// CORRECT
+timestamp: Math.floor(d.timestamp.getTime() / 1000),
+```
+
+**Note**: The auto-generated `enrichEvents` helper handles this correctly. This only happens with manual `.pipe()` transforms.
+
+**Recovery**: Drop tables + sync, delete SQLite (if factory), restart.
+
 ### Error Pattern 6: Memory Issues
 
 **Symptoms**:

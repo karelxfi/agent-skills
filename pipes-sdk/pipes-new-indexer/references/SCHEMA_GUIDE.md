@@ -18,6 +18,7 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 | `bytes32` (generic) | `String` | Variable length when decoded |
 | `bool` | `UInt8` or `Bool` | 0/1 or true/false |
 | block timestamp | `DateTime` or `DateTime64(3)` | Use DateTime64(3) for millisecond precision |
+| `bytes32` (market ID) | `FixedString(66)` | Same as tx hash — 0x + 64 hex |
 
 ## Table Engine Selection
 
@@ -99,6 +100,51 @@ CREATE TABLE erc20_transfers (
 ) ENGINE = ReplacingMergeTree(block_timestamp)
 ORDER BY (token_address, block_number, transaction_hash, log_index)
 PARTITION BY toYYYYMM(block_timestamp)
+```
+
+## Timestamp Handling
+
+**CRITICAL**: ClickHouse `DateTime` expects **seconds** since epoch, but JavaScript `Date.getTime()` returns **milliseconds**.
+
+```typescript
+// WRONG — produces 1970 dates in ClickHouse
+timestamp: d.timestamp.getTime(),  // milliseconds!
+
+// CORRECT — proper dates
+timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds
+
+// ALSO CORRECT — if using enrichEvents (auto-generated helper)
+// enrichEvents handles the division internally
+```
+
+If you see `1970-01-28` dates in your ClickHouse data, this is almost certainly the cause.
+
+## Struct/Tuple Event Parameters
+
+Some protocols emit events with struct (tuple) parameters. The generated typegen code handles these automatically:
+
+```typescript
+// Example: Morpho CreateMarket event with MarketParams tuple
+CreateMarket: event(
+  '0xac4b2400...',
+  'CreateMarket(bytes32,(address,address,address,address,uint256))',
+  {
+    id: indexed(p.bytes32),
+    marketParams: p.struct({
+      loanToken: p.address,
+      collateralToken: p.address,
+      oracle: p.address,
+      irm: p.address,
+      lltv: p.uint256,
+    }),
+  },
+)
+```
+
+Access nested fields in `.pipe()` transforms:
+```typescript
+d.event.marketParams.loanToken      // address
+d.event.marketParams.lltv.toString() // BigInt → String
 ```
 
 ## BigInt Transformation in TypeScript

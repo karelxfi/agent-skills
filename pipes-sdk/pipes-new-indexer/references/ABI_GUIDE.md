@@ -71,6 +71,50 @@ events: {
 | `int24`, `int32` | No | Safe as Number |
 | `address` | N/A | Already a string |
 
+## Struct/Tuple Parameters and bytes32
+
+Some DeFi protocols use struct (tuple) parameters in events and `bytes32` identifiers (e.g., Morpho market IDs). The `evm-typegen` tool handles these automatically.
+
+### bytes32 Fields
+
+`bytes32` values are common as identifiers (market IDs, salt values, etc.). They decode to `string` in TypeScript:
+
+```typescript
+// In generated ABI
+id: indexed(p.bytes32)
+
+// Access in .pipe()
+marketId: d.event.id  // string, "0x..." (66 chars)
+```
+
+Store as `FixedString(66)` in ClickHouse (same as transaction hashes).
+
+### Struct (Tuple) Parameters
+
+Events can include struct parameters. Typegen generates nested `p.struct()` definitions:
+
+```typescript
+// Generated code for Morpho's CreateMarket event
+CreateMarket: event(
+  '0xac4b2400...',
+  'CreateMarket(bytes32,(address,address,address,address,uint256))',
+  {
+    id: indexed(p.bytes32),
+    marketParams: p.struct({
+      loanToken: p.address,
+      collateralToken: p.address,
+      oracle: p.address,
+      irm: p.address,
+      lltv: p.uint256,
+    }),
+  },
+)
+
+// Access in .pipe()
+d.event.marketParams.loanToken       // address string
+d.event.marketParams.lltv.toString() // BigInt → String
+```
+
 ## Proxy Contract Detection and Handling
 
 Many DeFi protocols use proxy contracts (e.g., Lido stETH, upgradeable vaults). Fetching the proxy ABI only gives you the proxy's interface, NOT the implementation's events.

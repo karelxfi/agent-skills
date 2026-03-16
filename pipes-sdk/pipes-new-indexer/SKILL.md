@@ -455,7 +455,7 @@ events: {
 
 ### Factory Pattern
 
-Track dynamically created contracts (e.g., Uniswap pools). Use `factory()` inside the `contracts` field of `evmDecoder`:
+Track dynamically created contracts (e.g., Uniswap pools, MetaMorpho vaults). Use `factory()` inside the `contracts` field of `evmDecoder`:
 
 ```typescript
 import { evmDecoder, factory, factorySqliteDatabase } from '@subsquid/pipes/evm'
@@ -473,6 +473,82 @@ const swaps = evmDecoder({
   },
 })
 ```
+
+**Factory pattern key concepts:**
+- `address`: The factory contract(s) that emit creation events
+- `event`: The creation event (e.g., `PoolCreated`, `CreateMetaMorpho`)
+- `parameter`: The event parameter containing the child contract address
+- `database`: SQLite database to persist discovered child contracts across restarts
+
+**Accessing factory event metadata in `.pipe()`:**
+Each decoded event includes a `factory` property with the creation event's data:
+```typescript
+.pipe(({ deposits }) => ({
+  deposits: deposits.map((d) => ({
+    vault: d.contract,                    // child contract address
+    vaultName: d.factory?.event.name ?? '',  // from creation event
+    asset: d.factory?.event.asset ?? '',     // from creation event
+    sender: d.event.sender,               // from the decoded event itself
+  })),
+}))
+```
+Use `d.factory?.event.<param>` to access any parameter from the factory creation event. This is how you enrich child contract events with metadata from deployment (names, symbols, assets, etc.).
+
+**CRITICAL: Factory cold-start behavior.** The factory pattern only discovers child contracts from the `range.from` block forward. If the factory deployed 100 contracts before your start block, those are NOT tracked. This means:
+- You may see **zero data for 30-60+ seconds** while the indexer catches up to a block where the factory creates a new child contract
+- This is normal, not a bug — but it can be alarming during testing
+- To track ALL child contracts, set `range.from` to the factory's deployment block
+- For testing, a recent start block works but expect a delay before data appears
+
+**Restarting a factory indexer from scratch:**
+The factory pattern stores discovered contracts in a SQLite file. If you need a clean restart:
+```bash
+# 1. Kill the indexer
+# 2. Delete the SQLite database
+rm <project-folder>/*.sqlite
+# 3. Drop ClickHouse sync + data tables
+docker exec <container> clickhouse-client --password <pw> \
+  --query "DROP TABLE IF EXISTS <db>.sync; DROP TABLE IF EXISTS <db>.<table1>; DROP TABLE IF EXISTS <db>.<table2>"
+# 4. Restart
+cd <project-folder> && bun run dev
+```
+```
+
+### Adapting Factory Pattern for Any Protocol
+
+The `uniswapV3Swaps` template uses the factory pattern for Uniswap pools, but you can apply it to **any** protocol that deploys child contracts via a factory. Here's the general approach:
+
+1. **Identify the factory contract** — the contract that deploys child contracts
+2. **Find the creation event** — the event emitted when a child is deployed (e.g., `PoolCreated`, `CreateMetaMorpho`, `CreateVault`)
+3. **Identify the address parameter** — the event field containing the new child contract's address
+4. **Generate ABIs** for both the factory and the child contracts:
+   ```bash
+   # Generate factory ABI
+   npx @subsquid/evm-typegen@latest src/contracts \
+     <FACTORY_ADDRESS> --chain-id 1
+
+   # Generate child contract ABI (use any known child address)
+   npx @subsquid/evm-typegen@latest src/contracts \
+     <ANY_CHILD_CONTRACT_ADDRESS> --chain-id 1
+   ```
+5. **Wire up the factory pattern** — replace the Uniswap-specific values with your protocol's:
+   ```typescript
+   contracts: factory({
+     address: ['<FACTORY_ADDRESS>'],
+     event: factoryEvents.YourCreationEvent,  // e.g., CreateMetaMorpho
+     parameter: 'childAddress',                // event param with child address
+     database: await factorySqliteDatabase({ path: './your-factory.sqlite' }),
+   }),
+   events: {
+     yourEvents: childContractEvents.YourEvent,  // events on child contracts
+   },
+   ```
+
+**Real-world example — MetaMorpho vaults:**
+- Factory: `0x1897A8997241C1cD4bD0698647e4EB7213535c24` (MetaMorpho Factory V1.1)
+- Creation event: `CreateMetaMorpho` with `metaMorpho` (indexed address)
+- Child contracts: ERC-4626 vaults emitting `Deposit`, `Withdraw`, etc.
+- Metadata from creation event: `name`, `symbol`, `asset` — accessible via `d.factory?.event`
 
 ### Combining Multiple Decoders
 
@@ -514,6 +590,46 @@ stream.pipeTo(drizzleTarget({
   },
 }))
 ```
+
+## Timestamp Handling (CRITICAL)
+
+**ClickHouse `DateTime` expects seconds, but `d.timestamp.getTime()` returns milliseconds.** If you don't divide by 1000, timestamps will show as `1970-01-28` instead of the correct date.
+
+### When using the auto-generated `enrichEvents` helper
+
+The CLI-generated `enrichEvents` function (in `src/utils/index.ts`) handles this correctly — it divides by 1000 internally. If your indexer uses `enrichEvents`, timestamps are fine:
+```typescript
+// enrichEvents does this internally:
+timestamp: new Date(v.timestamp).getTime() / 1000  // ← correct
+```
+
+### When writing manual `.pipe()` transforms
+
+If you write a custom `.pipe()` transform (e.g., to access factory metadata), you handle timestamps yourself. **You MUST divide by 1000:**
+
+```typescript
+// WRONG — produces 1970 dates in ClickHouse
+.pipe(({ deposits }) => ({
+  deposits: deposits.map((d) => ({
+    timestamp: d.timestamp.getTime(),  // milliseconds! ClickHouse stores as year 1970
+  })),
+}))
+
+// CORRECT — produces proper dates
+.pipe(({ deposits }) => ({
+  deposits: deposits.map((d) => ({
+    timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds
+  })),
+}))
+```
+
+### When to use `enrichEvents` vs manual `.pipe()`
+
+| Scenario | Approach |
+|----------|----------|
+| Standard contract events, no factory metadata needed | Use `enrichEvents` (auto-generated) — handles timestamps, block data, tx hash automatically |
+| Need factory metadata (vault names, asset addresses from creation event) | Write manual `.pipe()` — access `d.factory?.event` fields, but handle timestamps yourself |
+| Need to combine factory metadata + standard enrichment | Write manual `.pipe()` and include `Math.floor(d.timestamp.getTime() / 1000)` |
 
 ## Pipes Best Practices
 
