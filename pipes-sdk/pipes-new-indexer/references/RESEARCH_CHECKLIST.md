@@ -6,37 +6,13 @@ A comprehensive guide for researching DeFi protocols before building indexers.
 
 ### Primary Data Sources (In Order)
 
-1. **Addybook.xyz** (PRIMARY) - Contract registry with verified addresses
-2. **Official Documentation** - Protocol docs and GitHub
-3. **Block Explorers** - Etherscan/BaseScan verified contracts
-4. **Web Search** - General protocol information
+1. **Official Documentation** - Protocol docs and GitHub
+2. **Block Explorers** - Etherscan/BaseScan verified contracts
+3. **Web Search** - General protocol information
 
 ## Research Workflow
 
-### Step 1: Check Addybook.xyz (Always First)
-
-**Addybook provides**:
-- Verified contract addresses per chain
-- Deployment blocks
-- Key events with signatures
-- Key functions
-- Use cases
-- Source attribution
-
-**How to use**:
-```bash
-# Search for protocol
-WebFetch: https://addybook.xyz/api/v1/search/index.json
-Prompt: "Find [protocol] and extract contract addresses, events, deployment info"
-
-# Get detailed protocol page
-WebFetch: https://addybook.xyz/protocols/[protocol-slug]
-Prompt: "Extract all contracts, addresses, key events, deployment blocks"
-```
-
-**If found in Addybook**: Use this data as the source of truth
-
-### Step 2: Official Documentation
+### Step 1: Official Documentation
 
 Search for:
 - Official protocol website
@@ -51,10 +27,9 @@ Search for:
 "[Protocol] github repository"
 ```
 
-### Step 3: Verify Contract Addresses
+### Step 2: Verify Contract Addresses
 
 Cross-reference addresses from multiple sources:
-- Addybook.xyz (primary)
 - Official documentation
 - Block explorer (verified contracts)
 - GitHub deployment scripts
@@ -64,17 +39,16 @@ Cross-reference addresses from multiple sources:
 - No verification on block explorer
 - Different addresses across sources
 
-### Step 4: Find Deployment Block
+### Step 3: Find Deployment Block
 
 **Methods** (in order of reliability):
 
-1. **Addybook.xyz** - Often includes deployment block
-2. **Block Explorer** - Look for "Contract Creator" transaction
+1. **Block Explorer** - Look for "Contract Creator" transaction
    - Visit: `https://[chain]scan.org/address/0x...`
    - Find transaction that deployed the contract
    - Note the block number
 
-3. **Conservative Estimate** - If exact block unknown:
+2. **Conservative Estimate** - If exact block unknown:
    - Use a block from ~1 week before known first activity
    - Better to start earlier than miss events
 
@@ -83,7 +57,7 @@ Cross-reference addresses from multiple sources:
 - They often block automated access (403 errors)
 - Just provide the URL for user to check manually
 
-### Step 5: Extract Event Information
+### Step 4: Extract Event Information
 
 From verified source code or ABI:
 - Event names and descriptions
@@ -96,7 +70,7 @@ From verified source code or ABI:
 - Block explorer "Contract" tab (if verified)
 - ABI JSON (see ABI_GUIDE.md)
 
-### Step 6: Check for Proxy Patterns
+### Step 5: Check for Proxy Patterns
 
 **Common gotcha**: Most major DeFi protocols use proxy contracts (Aave, Compound, Lido, USDC, etc.)
 
@@ -123,7 +97,7 @@ grep "export const events" src/contracts/*.ts
 
 **Rule of thumb**: If it's a major DeFi protocol, assume it's a proxy until proven otherwise. See `ABI_GUIDE.md` for the full proxy handling workflow.
 
-### Step 7: Identify Key Events
+### Step 6: Identify Key Events
 
 Focus on events that capture:
 - **User actions**: deposits, withdrawals, swaps

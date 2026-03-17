@@ -132,8 +132,7 @@ All skills work with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk)
 
 - Use the published npm package (not local SDK paths)
 - Reference `beta.docs.sqd.dev` for documentation
-- Use addybook.xyz for contract address lookups
-- Follow the 7-step workflow in `pipes-workflow`
+- Follow the research workflow in `pipes-new-indexer/references/RESEARCH_CHECKLIST.md`
 
 ## Validation
 
