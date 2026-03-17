@@ -98,16 +98,30 @@ From verified source code or ABI:
 
 ### Step 6: Check for Proxy Patterns
 
-**Common gotcha**: Many protocols use proxy contracts
+**Common gotcha**: Most major DeFi protocols use proxy contracts (Aave, Compound, Lido, USDC, etc.)
 
-**How to detect**:
-1. Check if contract has `implementation()` or `logic()` function
-2. Look for `Upgraded` events
-3. Check block explorer for "Proxy" label
+**How to detect BEFORE generating the indexer**:
+1. Check block explorer for "Proxy" label or "Read as Proxy" tab
+2. Check if contract has `implementation()`, `admin()`, or `upgradeTo()` functions
+3. Look for `Upgraded` events in the contract's event log
+
+**How to detect AFTER generating the indexer**:
+```bash
+grep "export const events" src/contracts/*.ts
+# If only "Upgraded" event → proxy contract, needs fixing
+```
 
 **If proxy**:
-- Use **implementation contract ABI**, not proxy ABI
-- Events are emitted from proxy address but use implementation signature
+1. Find implementation address on Etherscan → "Read as Proxy" tab
+2. Generate types from implementation address:
+   ```bash
+   npx @subsquid/evm-typegen@latest src/contracts \
+     <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
+   ```
+3. Update import in `src/index.ts` to use the implementation file
+4. Keep the proxy address in `contracts:` array (events emit from proxy)
+
+**Rule of thumb**: If it's a major DeFi protocol, assume it's a proxy until proven otherwise. See `ABI_GUIDE.md` for the full proxy handling workflow.
 
 ### Step 7: Identify Key Events
 

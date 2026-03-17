@@ -117,33 +117,97 @@ d.event.marketParams.lltv.toString() // BigInt → String
 
 ## Proxy Contract Detection and Handling
 
-Many DeFi protocols use proxy contracts (e.g., Lido stETH, upgradeable vaults). Fetching the proxy ABI only gives you the proxy's interface, NOT the implementation's events.
+Many major DeFi protocols use proxy contracts (e.g., Aave V3 Pool, Lido stETH, upgradeable vaults). **Both the CLI and `evm-typegen` fetch the proxy ABI, NOT the implementation ABI.** This is the #1 cause of "indexer crashes on startup" for custom templates.
 
-### Signs of a Proxy
+### The Failure Mode
 
-1. Very few events/functions (3-5) for a major protocol
-2. Has `implementation()`, `admin()`, or `upgradeTo()` functions
-3. Expected events are missing from the ABI
+When you pass a proxy contract address to the CLI's custom template:
+1. CLI fetches the ABI from the block explorer → gets the **proxy ABI** (only `Upgraded`, `admin()`, `implementation()`)
+2. Generated `src/contracts/<address>.ts` has only the `Upgraded` event
+3. `src/index.ts` references events like `Supply`, `Borrow`, etc. that don't exist
+4. Indexer crashes: `TypeError: Cannot read properties of undefined (reading 'topic')`
 
-### Handling Proxies
+**`evm-typegen` has the same problem** — it also fetches the proxy ABI, not the implementation.
 
-**Option 1: Get the implementation ABI**
+### How to Detect a Proxy
 
+**Check the generated contract file immediately after CLI generation:**
 ```bash
-# Get implementation address
-cast call <PROXY_ADDRESS> "implementation()" --rpc-url <RPC_URL>
-
-# Then fetch implementation ABI using the address above
+grep "export const events" src/contracts/*.ts
+# If you see ONLY "Upgraded" for a major protocol → it's a proxy
 ```
 
-**Option 2: Use commonAbis (recommended when events are standard)**
+Other signs:
+1. Very few events (1-3) for a major protocol that should have many
+2. Has `implementation()`, `admin()`, or `upgradeTo()` functions
+3. Expected events (Supply, Swap, Deposit, etc.) are completely missing
+
+### How to Fix: Find Implementation Address and Regenerate
+
+**Step 1: Find the implementation address on Etherscan**
+
+Go to the contract page on Etherscan (or the chain's explorer):
+```
+https://etherscan.io/address/<PROXY_ADDRESS>
+```
+Look for "Implementation:" near the top of the page, or click the "Read as Proxy" tab. Copy the implementation address.
+
+**Step 2: Generate types from the implementation**
+
+```bash
+npx @subsquid/evm-typegen@latest src/contracts \
+  <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
+```
+
+**Step 3: Update the import in `src/index.ts`**
+
+Change the import to point to the implementation's generated file:
+```typescript
+// BEFORE (proxy — only has Upgraded event)
+import { events } from './contracts/0xProxyAddress.js'
+
+// AFTER (implementation — has all protocol events)
+import { events } from './contracts/0xImplementationAddress.js'
+```
+
+**Important**: Keep the proxy address in the `contracts` array of `evmDecoder`. Events are emitted from the proxy address but use the implementation's event signatures:
+```typescript
+evmDecoder({
+  contracts: ['0xProxyAddress'],  // ← proxy address (where events are emitted)
+  events: {
+    Supply: implementationEvents.Supply,  // ← implementation ABI (event signatures)
+  },
+})
+```
+
+### Real-World Example: Aave V3 Pool
+
+```bash
+# Proxy address (what users interact with):
+# 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2
+
+# CLI/typegen generates only: Upgraded event
+
+# Implementation address (found on Etherscan "Read as Proxy"):
+# 0x8147b99df7672a21809c9093e6f6ce1a60f119bd
+
+# Fix:
+npx @subsquid/evm-typegen@latest src/contracts \
+  0x8147b99df7672a21809c9093e6f6ce1a60f119bd --chain-id 1
+
+# Then update import in src/index.ts
+```
+
+### Alternative Approaches
+
+**Option A: Use commonAbis (when events are standard)**
 
 ```typescript
 import { commonAbis } from "@subsquid/pipes/evm"
 events: { transfers: commonAbis.erc20.events.Transfer }
 ```
 
-**Option 3: Define events inline using topic hash**
+**Option B: Define events inline using topic hash**
 
 Find the topic0 hash from the block explorer Events tab, then define inline:
 
@@ -159,6 +223,17 @@ const Submitted = event(
 
 events: { submitted: Submitted }
 ```
+
+### Common Proxy Contracts in DeFi
+
+| Protocol | Proxy Address | Notes |
+|----------|--------------|-------|
+| Aave V3 Pool | Chain-specific | EIP-1967 proxy, implementation changes with upgrades |
+| Compound V3 (Comet) | Chain-specific | TransparentUpgradeableProxy |
+| Lido stETH | `0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84` | AppProxy (Aragon) |
+| USDC | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | AdminUpgradeabilityProxy |
+
+**Rule of thumb**: If it's a major DeFi protocol on Ethereum, assume it's a proxy until proven otherwise.
 
 ## ABI Not Found
 

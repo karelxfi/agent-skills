@@ -479,7 +479,31 @@ rm <project>/*.sqlite
 bun run dev
 ```
 
-### Issue 11: Factory Indexer Shows Zero Data for 30-60+ Seconds
+### Issue 11: Proxy Contract Crashes Indexer on Startup
+
+**Symptoms**: Indexer crashes immediately with `TypeError: Cannot read properties of undefined (reading 'topic')` at `evmDecoder`.
+
+**Cause**: The contract is behind a proxy (EIP-1967, TransparentUpgradeableProxy, etc.). Both the CLI and `evm-typegen` fetch the proxy ABI, which only contains the `Upgraded` event. The generated `index.ts` references events (e.g., `Supply`, `Borrow`) that don't exist in the proxy ABI.
+
+**Detection**: After CLI generation, inspect the contract file:
+```bash
+grep "export const events" src/contracts/*.ts
+# Proxy: only "Upgraded" event
+# Implementation: all expected events (Supply, Borrow, Swap, etc.)
+```
+
+**Solution**:
+1. Find implementation address: Go to `https://etherscan.io/address/<proxy>` → "Read as Proxy" tab → copy implementation address
+2. Generate types from implementation:
+   ```bash
+   npx @subsquid/evm-typegen@latest src/contracts <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
+   ```
+3. Update import in `src/index.ts` to point to the implementation file
+4. Keep the proxy address in `contracts:` array (events are emitted from the proxy)
+
+**Common proxy contracts**: Aave V3 Pool, Compound V3, Lido stETH, USDC. Rule of thumb: if it's a major DeFi protocol, assume proxy until proven otherwise.
+
+### Issue 12: Factory Indexer Shows Zero Data for 30-60+ Seconds
 
 **Symptoms**: Factory-pattern indexer starts successfully, syncs blocks, but produces zero rows in the database for an extended period.
 

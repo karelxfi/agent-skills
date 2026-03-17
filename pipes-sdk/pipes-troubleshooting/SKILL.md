@@ -209,6 +209,38 @@ TypeError: Cannot read property 'from' of undefined
      --chain-id 1
    ```
 
+### Error Pattern 4b: Proxy Contract ABI — Crash on Startup
+
+**Symptoms**:
+```
+TypeError: Cannot read properties of undefined (reading 'topic')
+    at evmDecoder (evm-decoder.ts:322:70)
+```
+
+**Diagnosis**: The contract is a proxy. The CLI/typegen fetched the proxy ABI (only `Upgraded` event), but `index.ts` references events like `Supply`, `Borrow`, etc. that don't exist in the generated file.
+
+**How to confirm**: Check the generated contract file:
+```bash
+grep "export const events" src/contracts/*.ts
+# If only "Upgraded" → proxy contract
+```
+
+**Fix**:
+1. Find the implementation address on Etherscan → "Read as Proxy" tab
+2. Generate types from the implementation:
+   ```bash
+   npx @subsquid/evm-typegen@latest src/contracts \
+     <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
+   ```
+3. Update the import in `src/index.ts`:
+   ```typescript
+   // Change from proxy file to implementation file
+   import { events } from './contracts/<IMPLEMENTATION_ADDRESS>.js'
+   ```
+4. Keep the proxy address in `contracts:` array — events emit from the proxy address
+
+**Prevention**: After CLI generation, always check the generated contract file for proxy-only ABI before running. See `pipes-new-indexer/references/ABI_GUIDE.md` for full proxy guide.
+
 ### Error Pattern 5: Missing Data
 
 **Symptoms**:

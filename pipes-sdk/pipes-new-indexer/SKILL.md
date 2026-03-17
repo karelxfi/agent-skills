@@ -298,7 +298,27 @@ After the CLI generates the project, verify these BEFORE running:
 
    There is NO combined `weth_events` table. Query each event table separately.
 
-5. **Contract file naming** (custom template):
+5. **Proxy contract detection** (custom template — CRITICAL):
+   Check the generated contract file for proxy-only ABI:
+   ```bash
+   grep "export const events" <project-folder>/src/contracts/*.ts
+   # If you ONLY see "Upgraded" → it's a proxy contract!
+   # The CLI fetched the proxy ABI, not the implementation.
+   ```
+
+   **If proxy detected:**
+   1. Find implementation address on Etherscan ("Read as Proxy" tab)
+   2. Generate types from implementation:
+      ```bash
+      npx @subsquid/evm-typegen@latest <project-folder>/src/contracts \
+        <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
+      ```
+   3. Update import in `src/index.ts` to point to the implementation file
+   4. Keep the proxy address in `contracts:` array (events emit from proxy)
+
+   See `references/ABI_GUIDE.md` for detailed proxy handling guide.
+
+6. **Contract file naming** (custom template):
    The generated contract file is named by address, not by `contractName`:
    ```
    src/contracts/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2.ts  (not weth.ts)
