@@ -423,7 +423,30 @@ bun run dev
 
 **Prevention**: Always use Node.js LTS (v20 or v22) for Pipes SDK projects.
 
-### Error Pattern 10: CLI Crashes on `init` — ora ESM/CJS Error
+### Error Pattern 10: Hyperliquid addFill Missing Range
+
+**Symptoms**:
+```
+TypeError: Cannot read properties of undefined (reading 'from')
+    at parsePortalRange
+    at HyperliquidFillsQueryBuilder.addRequest
+    at HyperliquidFillsQueryBuilder.addFill
+```
+
+**Diagnosis**: The `addFill()` method requires a `range` parameter. Unlike EVM decoders where range is set once, each Hyperliquid fill filter needs its own range.
+
+**Fix**:
+```typescript
+// WRONG
+.addFill({ request: { coin: ['BTC'] } })
+
+// CORRECT
+.addFill({ range: { from: 920000000 }, request: { coin: ['BTC'] } })
+```
+
+**Prevention**: Always pass `range` in `addFill()`. The dataset starts at block 750,000,000.
+
+### Error Pattern 11: CLI Crashes on `init` — ora ESM/CJS Error
 
 **Symptoms**:
 ```

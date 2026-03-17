@@ -22,7 +22,7 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk
 
 | Skill | Use Case |
 |-------|----------|
-| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM and Solana chains; includes ABI fetching, schema design, and protocol research guides |
+| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM, Solana, and Hyperliquid chains; includes ABI fetching, schema design, and protocol research guides |
 | **pipes-troubleshooting** | Diagnose and fix runtime errors in blockchain indexers |
 | **pipes-performance** | Analyze and optimize indexer sync performance |
 
@@ -41,6 +41,7 @@ Skills are automatically available once installed. The agent will use them when 
 - "My indexer is syncing slowly, help me optimize it"
 - "Deploy my indexer to ClickHouse Cloud"
 - "Create an indexer for Uniswap V3 swaps - help me fetch the ABI and design the schema"
+- "Track BTC/ETH/SOL perpetual futures trades on Hyperliquid"
 
 ## Quick Start
 

@@ -18,7 +18,7 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk --all
 ```
 
 **Use cases:**
-- Create EVM and Solana indexers
+- Create EVM, Solana, and Hyperliquid indexers
 - Deploy to ClickHouse Cloud or Railway
 - Optimize indexer performance
 - Research protocols and design schemas

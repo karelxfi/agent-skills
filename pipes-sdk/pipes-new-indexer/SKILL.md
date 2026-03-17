@@ -1,6 +1,6 @@
 ---
 name: pipes-new-indexer
-description: Create a new blockchain indexer project using Pipes CLI with interactive templates for EVM and Solana chains. Use when starting a new indexer from scratch.
+description: Create a new blockchain indexer project using Pipes CLI with templates for EVM, Solana, and Hyperliquid chains. Use when starting a new indexer from scratch.
 compatibility: Requires npm/npx for @iankressin/pipes-cli
 allowed-tools: [Bash, Read, Write]
 metadata:
@@ -20,6 +20,7 @@ Activate when user wants to:
 - Generate a project with templates (ERC20, Uniswap V3, etc.)
 - Start indexing a new blockchain protocol
 - Set up a fresh indexer with proper structure
+- Build a Hyperliquid perpetual futures fills indexer
 
 ## Overview
 
@@ -52,6 +53,113 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 - **custom** - Start with a blank template for custom logic
 
 **CRITICAL**: Template IDs must use camelCase format. Each template has specific required `params` - check the schema.
+
+### Hyperliquid Fills (No CLI Template — Manual Setup)
+
+The Pipes SDK supports Hyperliquid fills natively via `@subsquid/pipes/hyperliquid`, but there is **no CLI template yet**. You must scaffold the project manually.
+
+**Import:**
+```typescript
+import { hyperliquidFillsPortalSource, HyperliquidFillsQueryBuilder } from '@subsquid/pipes/hyperliquid'
+```
+
+**Query builder pattern:**
+```typescript
+const query = new HyperliquidFillsQueryBuilder()
+  .addRange({ from: 920000000 })
+  .addFields({
+    block: { number: true, timestamp: true },
+    fill: {
+      user: true, coin: true, px: true, sz: true,
+      side: true, dir: true, closedPnl: true,
+      fee: true, feeToken: true, crossed: true, startPosition: true,
+    },
+  })
+  .addFill({ range: { from: 920000000 }, request: { coin: ['BTC', 'ETH', 'SOL'] } })
+```
+
+**CRITICAL**: `.addFill()` requires a `range` parameter — passing only `{ request: {...} }` will crash with `Cannot read properties of undefined (reading 'from')`.
+
+**Choosing a start block:** Blocks increment at ~1/second. Use `current_block - (days × 86400)` to estimate. For a 7-day window, subtract ~604,800 from the current head block. A 7-day BTC/ETH/SOL sync yields ~6M fills in ~2-3 minutes.
+
+**Source:**
+```typescript
+await hyperliquidFillsPortalSource({
+  portal: 'https://portal.sqd.dev/datasets/hyperliquid-fills',
+  query,
+})
+```
+
+**Data shape:** Each block has `header` (number, timestamp) and `fills` array. Use `.pipe()` to transform:
+```typescript
+.pipe(({ blocks }) => {
+  const fills = blocks.flatMap((block) =>
+    block.fills.map((fill) => ({
+      block_number: block.header.number,
+      timestamp: new Date(block.header.timestamp).toISOString(),
+      user: fill.user,
+      coin: fill.coin,
+      px: fill.px,
+      sz: fill.sz,
+      side: fill.side === 'B' ? 'Buy' : 'Sell',
+      dir: fill.dir,
+      closed_pnl: fill.closedPnl,
+      fee: fill.fee,
+      notional: fill.px * fill.sz,
+      sign: 1,
+    })),
+  )
+  return { fills }
+})
+```
+
+**Key differences from EVM indexers:**
+- No `evmDecoder` — use `HyperliquidFillsQueryBuilder` + `.pipe()` directly
+- Dataset starts at block **750,000,000** (not block 0)
+- Timestamps are in **milliseconds**. Use `new Date(block.header.timestamp).toISOString()` for ClickHouse (with `date_time_input_format: 'best_effort'`). Unlike EVM indexers, you do NOT divide by 1000 — the ISO string approach handles it.
+- `side` is `'B'` (buy) or `'S'` (sell) — single character codes. The pipe transform maps these to `'Buy'`/`'Sell'` for ClickHouse, so SQL queries use the mapped values.
+- `dir` values: `"Open Long"`, `"Close Long"`, `"Open Short"`, `"Close Short"`, `"Long > Short"`, `"Short > Long"`, `"Net Child Vaults"`
+- All numeric values (`px`, `sz`, `closedPnl`, `fee`) are native floats, not BigInt
+- `closedPnl` is only non-zero for closing trades
+- `fee` can be negative (maker rebate)
+
+**Fill filter options** (pass in `addFill({ request: {...} })`):
+- `coin` — Filter by asset: `['BTC', 'ETH', 'SOL']`
+- `user` — Filter by trader address: `['0x...']`
+- `dir` — Filter by direction: `['Open Long', 'Close Short']`
+- `feeToken` — Filter by fee denomination
+- `builder` — Filter by builder address
+
+**ClickHouse schema for fills:**
+```sql
+CREATE TABLE IF NOT EXISTS hl_fills (
+    block_number UInt64,
+    timestamp DateTime64(3, 'UTC'),
+    user LowCardinality(String),
+    coin LowCardinality(String),
+    px Float64,
+    sz Float64,
+    side LowCardinality(String),
+    dir LowCardinality(String),
+    closed_pnl Float64,
+    fee Float64,
+    notional Float64,
+    sign Int8
+) ENGINE = CollapsingMergeTree(sign)
+ORDER BY (coin, block_number, user, dir)
+PARTITION BY toYYYYMM(timestamp);
+```
+
+**Common use cases (tested):**
+- **Whale tracker** — filter by `user` to track specific whale addresses, monitor PnL and positions (894K fills for 5 whales in 60s)
+- **Multi-coin volume** — filter by `coin` with 10+ assets including HYPE, DOGE, WIF (2.35M fills for 9 coins in 60s)
+- **Perps analytics** — track all fills for majors, aggregate daily volume and long/short ratios (5M fills in 70s)
+
+**Coin tickers:** Use uppercase symbols: `BTC`, `ETH`, `SOL`, `HYPE`, `DOGE`, `WIF`, `ARB`, `SUI`, `AVAX`, etc. Some tokens use prefixed tickers: `kPEPE` (not `PEPE`), `kBONK`, `kFLOKI`, `cash:GOLD`, `cash:TSLA`, `xyz:GOLD`. Not all tokens use obvious tickers — run a broad query first to discover available coins.
+
+**Computed fields:** The `notional` field (`fill.px * fill.sz`) is NOT a native fill field — it's computed in the `.pipe()` transform. Native fields are listed in the addFields section above.
+
+See `references/HYPERLIQUID_GUIDE.md` for the complete manual setup walkthrough, use case examples, and SQL queries.
 
 ## Supported Sinks
 - **ClickHouse** - High-performance analytics database (recommended)
@@ -770,6 +878,7 @@ This skill includes comprehensive reference documentation in the `references/` d
 - **[ABI_GUIDE.md](references/ABI_GUIDE.md)** - Fetching contract ABIs, `commonAbis` usage, proxy contract detection and handling, TypeScript type generation
 - **[SCHEMA_GUIDE.md](references/SCHEMA_GUIDE.md)** - ClickHouse engine selection, ORDER BY strategy, BigInt handling, partitioning patterns
 - **[RESEARCH_CHECKLIST.md](references/RESEARCH_CHECKLIST.md)** - Protocol research workflow, contract discovery, deployment block finding, common gotchas
+- **[HYPERLIQUID_GUIDE.md](references/HYPERLIQUID_GUIDE.md)** - Complete Hyperliquid fills indexer setup, API reference, query builder usage, and performance benchmarks
 
 ### How to Access
 
