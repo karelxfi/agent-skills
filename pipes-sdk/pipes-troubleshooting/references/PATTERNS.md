@@ -138,7 +138,7 @@ docker exec clickhouse clickhouse-client --password=default \
   --query "TRUNCATE TABLE pipes.sync"
 
 # Option B: Use separate database
-CLICKHOUSE_DATABASE=my_unique_db bun run dev
+CLICKHOUSE_DATABASE=my_unique_db npm run dev
 ```
 
 **Prevention**: Always verify start block in logs:
@@ -225,7 +225,7 @@ sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { de
 **Solution**: The sync table tracks progress. Simply restart:
 ```bash
 cd <project-folder>
-bun run dev
+npm run dev
 ```
 
 The indexer reads the sync table and resumes from the last committed block. Verify the "Resuming from X" log line shows the expected block.
@@ -234,7 +234,7 @@ The indexer reads the sync table and resumes from the last committed block. Veri
 ```bash
 docker exec <container> clickhouse-client --password <pw> \
   --query "DROP TABLE IF EXISTS pipes.sync; DROP TABLE IF EXISTS pipes.<your_table>"
-bun run dev
+npm run dev
 ```
 
 **Note**: On first-ever start, the sync table does not exist yet. The SDK logs an error (`Unknown table expression identifier 'pipes.sync'`) and then creates it. This is harmless — do not treat it as a failure.
@@ -476,7 +476,7 @@ docker exec <container> clickhouse-client --password <pw> \
 # If using factory pattern, also delete the SQLite file
 rm <project>/*.sqlite
 # Restart
-bun run dev
+npm run dev
 ```
 
 ### Issue 11: Proxy Contract Crashes Indexer on Startup

@@ -101,7 +101,7 @@ ps aux | grep tsx | grep -v grep
 kill $(pgrep -f "tsx src/index.ts")
 ```
 
-**Why not `bun run dev &`?** The `&` keeps the process as a child of the current shell. If the shell exits (session timeout), the process may be killed. `nohup` prevents SIGHUP from killing it.
+**Why not `npm run dev &`?** The `&` keeps the process as a child of the current shell. If the shell exits (session timeout), the process may be killed. `nohup` prevents SIGHUP from killing it.
 
 ## Pattern 3: Wrapper with Retry Logic
 

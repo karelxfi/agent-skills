@@ -160,7 +160,7 @@ ls scripts/ | grep -i clickhouse
 For indexers:
 ```bash
 # 1. Start the indexer
-cd <project> && bun run dev
+cd <project> && npm run dev
 
 # 2. Check what block it's starting from
 tail -f indexer.log

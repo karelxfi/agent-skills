@@ -54,7 +54,7 @@ Before diagnosing errors, check if the user followed the mandatory workflow in p
 If indexer is currently running:
 ```bash
 # Check if process is running
-ps aux | grep "bun run dev\|tsx src/index.ts\|node"
+ps aux | grep "npm run dev\|tsx src/index.ts\|node"
 
 # Check output if running in background
 # Use BashOutput tool with bash_id
@@ -334,7 +334,7 @@ Process killed (signal 9)
 3. Process data in smaller batches
 4. Increase Node.js memory limit:
    ```bash
-   NODE_OPTIONS="--max-old-space-size=4096" bun run dev
+   NODE_OPTIONS="--max-old-space-size=4096" npm run dev
    ```
 
 ### Error Pattern 7: ClickHouse Schema Issues
@@ -369,7 +369,7 @@ Error: Cannot insert NULL into NOT NULL column
 
 **Symptoms**:
 - Terminal shows process exited
-- `bun run dev` was killed (OOM, Ctrl+C, machine restart)
+- `npm run dev` was killed (OOM, Ctrl+C, machine restart)
 - Partial data in database
 
 **Diagnosis**: Normal crash recovery scenario. The sync table tracks progress.
@@ -378,7 +378,7 @@ Error: Cannot insert NULL into NOT NULL column
 1. Simply restart — it will resume automatically:
    ```bash
    cd <project-folder>
-   bun run dev
+   npm run dev
    ```
 
 2. Verify the "Resuming from X" log line shows a block near where it crashed. This is the one scenario where "Resuming" is expected and correct.
@@ -416,7 +416,7 @@ export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 # Option 3: Download from https://nodejs.org/
 
 # Restart indexer
-bun run dev
+npm run dev
 ```
 
 **If you can't switch versions**: The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks (~100K), v25 often works fine.

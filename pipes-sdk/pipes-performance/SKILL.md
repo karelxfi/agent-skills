@@ -198,7 +198,7 @@ If indexer is currently running, check:
 
 ```bash
 # Check if indexer is running
-ps aux | grep "bun run dev\|tsx src/index.ts"
+ps aux | grep "npm run dev\|tsx src/index.ts"
 
 # Monitor output (if running in background)
 # Use BashOutput tool with the bash_id
