@@ -345,6 +345,29 @@ IMPORTANT: Use camelCase for templateId values. Every template requires a `param
 
 ### Step 3: Post-generation Setup (AUTOMATED - Do this AFTER CLI succeeds)
 
+**Known template gaps — the CLI does NOT generate these correctly. Fix after every `init`:**
+
+1. **docker-compose.yml** — Add persistent volume and CORS config mount:
+   ```yaml
+   volumes:
+     - clickhouse-data:/var/lib/clickhouse
+     - ./clickhouse-cors.xml:/etc/clickhouse-server/config.d/cors.xml:ro
+   ```
+
+2. **clickhouse-cors.xml** — Create for browser dashboard access:
+   ```xml
+   <clickhouse>
+       <http_options_response>
+           <header><name>Access-Control-Allow-Origin</name><value>*</value></header>
+           <header><name>Access-Control-Allow-Methods</name><value>GET, POST, OPTIONS</value></header>
+           <header><name>Access-Control-Allow-Headers</name><value>*</value></header>
+       </http_options_response>
+   </clickhouse>
+   ```
+
+3. **Database name** — CLI defaults to `pipes`. Always change to project-specific name in `.env`.
+
+
 **WARNING: The CLI defaults to `pipes` as the database name. This WILL cause sync table conflicts if you run more than one indexer.** Every indexer writes sync state to `{database}.sync` with `id = 'stream'`. Two indexers sharing a database = the second one resumes from the first's position, causing wrong data or missing events.
 
 **MANDATORY: Always create a project-specific database.** Use the project name or a descriptive name (e.g., `aave_v3_eth`, `usdc_transfers`, `uniswap_base`):
