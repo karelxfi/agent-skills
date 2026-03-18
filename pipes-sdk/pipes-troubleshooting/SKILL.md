@@ -672,12 +672,18 @@ Before declaring success:
 This skill includes comprehensive reference documentation in the `references/` directory:
 
 - **[PATTERNS.md](references/PATTERNS.md)** - Common indexing patterns, performance optimization, error patterns, and best practices
+- **[STREAM_RESILIENCE.md](references/STREAM_RESILIENCE.md)** - Keeping long-running indexers alive: retry patterns, process supervisors (pm2), nohup for dev sessions
+- **[CLICKHOUSE_ANALYTICS.md](references/CLICKHOUSE_ANALYTICS.md)** - Query patterns for dashboards: time bucketing, conditional aggregation, parameterized WHERE clauses, performance tips
+- **[TRADINGVIEW_PATTERNS.md](references/TRADINGVIEW_PATTERNS.md)** - TradingView Lightweight Charts: dark theme, series types, crosshair sync, live polling, responsive layout
 
 ### How to Access
 
 ```bash
 # Read patterns and best practices
 cat pipes-sdk/pipes-troubleshooting/references/PATTERNS.md
+cat pipes-sdk/pipes-troubleshooting/references/STREAM_RESILIENCE.md
+cat pipes-sdk/pipes-troubleshooting/references/CLICKHOUSE_ANALYTICS.md
+cat pipes-sdk/pipes-troubleshooting/references/TRADINGVIEW_PATTERNS.md
 ```
 
 Or use Claude Code's Read tool:
