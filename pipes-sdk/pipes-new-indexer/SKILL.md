@@ -52,6 +52,14 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 ### SVM (Solana) Templates
 - **custom** - Start with a blank template for custom logic
 
+**NOTE**: The SVM `custom` template may fail with `Invalid input: expected array, received undefined`. If so, scaffold the project manually (package.json, tsconfig, src/index.ts, docker-compose.yml).
+
+**Solana discriminator discovery (IMPORTANT):** Don't trust computed Anchor discriminators blindly. Always verify against actual on-chain data first:
+1. Query Portal for ALL instructions from the program (no d8 filter) in a small slot range
+2. Extract the actual d8 bytes from instruction data to see which discriminators exist
+3. Match discovered discriminators against the program's IDL
+4. Some programs route user actions through CPI (inner instructions) — you may need `include_inner_instructions: true`
+
 **CRITICAL**: Template IDs must use camelCase format. Each template has specific required `params` - check the schema.
 
 ### Hyperliquid Fills (No CLI Template — Manual Setup)
