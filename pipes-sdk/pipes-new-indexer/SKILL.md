@@ -190,26 +190,27 @@ If you cannot switch Node versions, the indexer may still work for smaller syncs
 
 ### CLI Known Issue: `ora` ESM/CJS Crash
 
-The CLI `init` command crashes with `(0 , import_ora.default) is not a function` on **every** `init` call. This is because the CLI bundles ESM-only `ora` v6+ as CJS. The `--schema` and `--version` commands still work.
+The CLI `init` command may crash with `(0 , import_ora.default) is not a function`. This is because the CLI bundles ESM-only `ora` v6+ as CJS. The `--schema` and `--version` commands still work.
 
-**IMPORTANT: This happens on every `init` call, not just the first time.** Additionally, `npx` may re-download the CLI at any time, overwriting any previous patch. You must patch before every `init`.
-
-**Automatic pre-flight patch (MANDATORY before every `init`):**
-
-Run this before EVERY `npx @iankressin/pipes-cli@latest init` call:
+**Workaround**: Patch the cached CLI bundle:
 ```bash
-# Pre-flight: ensure CLI is cached, then patch ora
-npx @iankressin/pipes-cli@latest --version 2>/dev/null || true
 CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
-if [ -n "$CLI_PATH" ] && ! grep -q 'import_ora = { default: function' "$CLI_PATH"; then
-  sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
-  echo "ora patch applied"
-else
-  echo "ora patch already in place (or CLI not found)"
-fi
+sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
 ```
 
-**When using this skill programmatically, ALWAYS run the pre-flight patch as a single block immediately before the `init` command.** Do not assume a previous patch is still in place.
+Then re-run the `init` command.
+
+**WARNING: `npx` may re-download the CLI and overwrite your patch.** Always verify the patch before running `init`:
+```bash
+CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
+if [ -z "$CLI_PATH" ]; then
+  echo "CLI not cached yet — run any npx pipes-cli command first, then patch"
+elif grep -q 'import_ora = { default: function' "$CLI_PATH"; then
+  echo "Patch is in place"
+else
+  echo "Patch missing — re-apply the workaround above"
+fi
+```
 
 ### Programmatic Mode (RECOMMENDED for Claude Code)
 
@@ -218,7 +219,7 @@ ALWAYS use programmatic mode with the published npm package:
 ```bash
 npx @iankressin/pipes-cli@latest init --config '{
   "projectFolder": "/path/to/my-indexer",
-  "packageManager": "npm",
+  "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
   "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
@@ -285,35 +286,7 @@ If the CLI fails:
    - Where should the data be stored? (ClickHouse, PostgreSQL, CSV)
    - What should the project be named?
 
-3. **Check for proxy contracts (MANDATORY for custom template):**
-
-   **This is the #1 failure mode for DeFi protocol indexers.** Most major DeFi protocols (Aave, Compound, Uniswap governance, etc.) use proxy contracts. If the target contract is a proxy, the CLI will fetch only the proxy ABI (typically just an `Upgraded` event), not the implementation ABI with the actual business logic events.
-
-   **Before running the CLI, check EVERY target contract:**
-   ```bash
-   # Check Etherscan for proxy status (replace chain/address as needed)
-   # Look for: "This contract is a proxy" banner on the contract page
-   # Or check the "Read as Proxy" tab — if it exists, the contract IS a proxy
-   ```
-
-   **If the contract IS a proxy:**
-   1. Find the implementation address (Etherscan "Read as Proxy" tab → implementation address)
-   2. You will need the **implementation's ABI** for event decoding
-   3. But you will use the **proxy's address** in the indexer config (events emit from the proxy)
-   4. Plan to run `evm-typegen` against the implementation address AFTER CLI generation:
-      ```bash
-      npx @subsquid/evm-typegen@latest <project>/src/contracts \
-        <IMPLEMENTATION_ADDRESS> --chain-id <CHAIN_ID>
-      ```
-   5. Then update the import in `src/index.ts` to use the implementation's generated file
-
-   **Real example — Aave V3 Pool:**
-   - Proxy: `0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2` (this is what users provide)
-   - CLI fetches proxy ABI → only gets `Upgraded` event (WRONG)
-   - Implementation has `Supply`, `Borrow`, `Repay`, `Withdraw`, `LiquidationCall` events
-   - Solution: Generate types from implementation, keep proxy address in config
-
-4. **Verify your understanding:**
+3. **Verify your understanding:**
    - Look at actual transactions on Etherscan to see which events are emitted
    - Check if there are multiple contracts involved
    - Understand the data flow between contracts
@@ -333,7 +306,7 @@ This ensures you use the correct templateId and understand the required configur
 ```bash
 npx @iankressin/pipes-cli@latest init --config '{
   "projectFolder": "/path/to/my-indexer",
-  "packageManager": "npm",
+  "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
   "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
@@ -345,29 +318,28 @@ IMPORTANT: Use camelCase for templateId values. Every template requires a `param
 
 ### Step 3: Post-generation Setup (AUTOMATED - Do this AFTER CLI succeeds)
 
-**WARNING: The CLI defaults to `pipes` as the database name. This WILL cause sync table conflicts if you run more than one indexer.** Every indexer writes sync state to `{database}.sync` with `id = 'stream'`. Two indexers sharing a database = the second one resumes from the first's position, causing wrong data or missing events.
-
-**MANDATORY: Always create a project-specific database.** Use the project name or a descriptive name (e.g., `aave_v3_eth`, `usdc_transfers`, `uniswap_base`):
+**CRITICAL: Use a separate database per indexer project.** All indexers write their sync state to `{database}.sync` with `id = 'stream'`. If two indexers share a database, the second one resumes from the first's position, causing wrong data or missing events.
 
 ```bash
-# Step 3a: Derive a database name from the project
-DB_NAME=$(basename <project-folder> | tr '-' '_')
-# Examples: aave-v3-indexer → aave_v3_indexer, usdc-transfers → usdc_transfers
-
-# Step 3b: Create the dedicated database
+# Good: dedicated database per project
 docker exec <container> clickhouse-client --password <pw> \
-  --query "CREATE DATABASE IF NOT EXISTS $DB_NAME"
+  --query "CREATE DATABASE IF NOT EXISTS usdc_transfers"
+# Then set CLICKHOUSE_DATABASE=usdc_transfers in .env
 
-# Step 3c: Update .env to use the dedicated database (NOT the default 'pipes')
-sed -i '' "s/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=$DB_NAME/" <project-folder>/.env
+# Bad: all indexers in 'pipes' database — sync table conflicts
 ```
 
 **If using ClickHouse (Local Docker)**:
 - Get the actual password from existing container OR use "default" if creating new
+- Create a **dedicated database** for this indexer:
+  ```bash
+  docker exec <container-name> clickhouse-client --password <pw> \
+    --query "CREATE DATABASE IF NOT EXISTS <indexer-specific-db-name>"
+  ```
 - Update the .env file with correct password AND database:
   ```bash
   sed -i '' 's/CLICKHOUSE_PASSWORD=.*/CLICKHOUSE_PASSWORD=<actual-password>/' <project-folder>/.env
-  sed -i '' "s/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=$DB_NAME/" <project-folder>/.env
+  sed -i '' 's/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=<indexer-specific-db-name>/' <project-folder>/.env
   ```
 - **If you MUST reuse a database**, clear the sync table first:
   ```bash
@@ -478,7 +450,7 @@ After the CLI generates the project, verify these BEFORE running:
 
 ```bash
 cd <project-folder>
-npm run dev
+bun run dev
 ```
 
 **VERIFY START BLOCK** - Check the first log message shows your intended start block, not a resumed block.
@@ -506,7 +478,7 @@ docker exec <container> clickhouse-client --password <pw> \
 **How to restart after a crash (resume is wanted):**
 ```bash
 cd <project-folder>
-npm run dev
+bun run dev
 # First log line should say "Resuming from X" where X is near where it stopped
 ```
 
@@ -530,15 +502,14 @@ else
   CLICKHOUSE_PASSWORD=$(docker inspect $CLICKHOUSE_CONTAINER | grep CLICKHOUSE_PASSWORD | cut -d'"' -f4)
 fi
 
-DB_NAME=$(basename /path/to/my-new-indexer | tr '-' '_')
-docker exec $CLICKHOUSE_CONTAINER clickhouse-client --query "CREATE DATABASE IF NOT EXISTS $DB_NAME"
+docker exec $CLICKHOUSE_CONTAINER clickhouse-client --query "CREATE DATABASE IF NOT EXISTS pipes"
 ```
 
 ### Step 2: Generate the indexer project
 ```bash
 npx @iankressin/pipes-cli@latest init --config '{
   "projectFolder": "/path/to/my-new-indexer",
-  "packageManager": "npm",
+  "packageManager": "bun",
   "networkType": "evm",
   "network": "ethereum-mainnet",
   "templates": [{"templateId": "erc20Transfers", "params": {"contractAddresses": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]}}],
@@ -550,12 +521,11 @@ npx @iankressin/pipes-cli@latest init --config '{
 ```bash
 cd /path/to/my-new-indexer
 sed -i '' "s/CLICKHOUSE_PASSWORD=.*/CLICKHOUSE_PASSWORD=$CLICKHOUSE_PASSWORD/" .env
-sed -i '' "s/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=$DB_NAME/" .env
 ```
 
 ### Step 4: Run the indexer
 ```bash
-npm run dev
+bun run dev
 ```
 
 ## Performance Considerations
@@ -668,7 +638,7 @@ rm <project-folder>/*.sqlite
 docker exec <container> clickhouse-client --password <pw> \
   --query "DROP TABLE IF EXISTS <db>.sync; DROP TABLE IF EXISTS <db>.<table1>; DROP TABLE IF EXISTS <db>.<table2>"
 # 4. Restart
-cd <project-folder> && npm run dev
+cd <project-folder> && bun run dev
 ```
 ```
 

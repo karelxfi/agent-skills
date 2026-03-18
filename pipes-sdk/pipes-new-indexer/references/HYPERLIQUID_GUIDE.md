@@ -211,7 +211,7 @@ bun install
 # Create database
 docker exec clickhouse clickhouse-client --password=default \
   --query "CREATE DATABASE IF NOT EXISTS hl_perps"
-npm run dev
+bun run dev
 ```
 
 ## API Reference
