@@ -42,78 +42,6 @@ docker run -d \
   clickhouse/clickhouse-server:latest
 ```
 
-### CORS Configuration (Required for Browser Dashboards)
-
-If you are building a browser-based dashboard that queries ClickHouse directly via HTTP (port 8123), you **must** enable CORS headers. Without this, browsers will block all requests from your dashboard.
-
-**Create a CORS config file:**
-```bash
-mkdir -p clickhouse-config
-
-cat > clickhouse-config/cors.xml << 'EOF'
-<clickhouse>
-    <http_handlers>
-        <rule>
-            <methods>POST,GET,OPTIONS</methods>
-            <headers>
-                <header>
-                    <name>Access-Control-Allow-Origin</name>
-                    <value>*</value>
-                </header>
-                <header>
-                    <name>Access-Control-Allow-Headers</name>
-                    <value>origin, x-requested-with, x-clickhouse-format, x-clickhouse-user, x-clickhouse-key, content-type, authorization</value>
-                </header>
-                <header>
-                    <name>Access-Control-Allow-Methods</name>
-                    <value>POST, GET, OPTIONS</value>
-                </header>
-            </headers>
-            <handler>
-                <type>predefined_query_handler</type>
-                <query>SELECT 1</query>
-            </handler>
-        </rule>
-    </http_handlers>
-    <http_options_response>
-        <header>
-            <name>Access-Control-Allow-Origin</name>
-            <value>*</value>
-        </header>
-        <header>
-            <name>Access-Control-Allow-Headers</name>
-            <value>origin, x-requested-with, x-clickhouse-format, x-clickhouse-user, x-clickhouse-key, content-type, authorization</value>
-        </header>
-        <header>
-            <name>Access-Control-Allow-Methods</name>
-            <value>POST, GET, OPTIONS</value>
-        </header>
-    </http_options_response>
-</clickhouse>
-EOF
-```
-
-**Mount the config when creating the container:**
-```bash
-docker run -d \
-  --name clickhouse \
-  -p 8123:8123 \
-  -p 9000:9000 \
-  -v clickhouse-data:/var/lib/clickhouse \
-  -v $(pwd)/clickhouse-config/cors.xml:/etc/clickhouse-server/config.d/cors.xml \
-  -e CLICKHOUSE_PASSWORD=default \
-  -e CLICKHOUSE_USER=default \
-  clickhouse/clickhouse-server:latest
-```
-
-**For an existing container**, copy the config and restart:
-```bash
-docker cp clickhouse-config/cors.xml clickhouse:/etc/clickhouse-server/config.d/cors.xml
-docker restart clickhouse
-```
-
-**Note:** Use `Access-Control-Allow-Origin: *` for local development. For production, restrict to your dashboard's origin.
-
 **macOS alternative: OrbStack**
 
 [OrbStack](https://orbstack.dev/) is a lightweight Docker Desktop replacement for macOS. It uses fewer resources and starts faster. If you use OrbStack, all `docker` commands work identically — no changes needed. The docker binary is at `/Applications/OrbStack.app/Contents/MacOS/xbin/docker`.
@@ -188,7 +116,7 @@ CLICKHOUSE_PASSWORD=<password>
 
 ```bash
 cd $PROJECT_PATH
-npm run dev 2>&1 | tee indexer.log &
+bun run dev 2>&1 | tee indexer.log &
 INDEXER_PID=$!
 ```
 
@@ -316,7 +244,7 @@ curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
 
 ```bash
 cd [project-path]
-npm run dev
+bun run dev
 ```
 
 Check the first log line — same rule as local: `"Start indexing from X"` is correct, `"Resuming from X"` means sync table conflict.
@@ -446,7 +374,7 @@ docker stop clickhouse && docker rm clickhouse
 4. Verify first log line shows correct start block
 5. After restart, watch the first 10 seconds of logs:
    ```bash
-   npm run dev 2>&1 | head -20
+   bun run dev 2>&1 | head -20
    ```
    Confirm it says "Start indexing from [your-configured-block]" not "Resuming from [old-block]".
 6. After 30 seconds, verify data is flowing:
