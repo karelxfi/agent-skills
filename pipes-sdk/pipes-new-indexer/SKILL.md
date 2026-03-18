@@ -454,6 +454,25 @@ After the CLI generates the project, verify these BEFORE running:
 
    See `references/ABI_GUIDE.md` for detailed proxy handling guide.
 
+   **Non-standard proxy patterns (Aragon, Diamond, etc.):**
+   Some protocols use non-standard proxy patterns where `evm-typegen` cannot auto-resolve the implementation. Examples:
+   - **Lido** uses Aragon's `AppProxyUpgradeable` — typegen returns only `ProxyDeposit`
+   - **Diamond proxies (EIP-2535)** — multiple implementation facets
+
+   If typegen returns a proxy-only ABI even when given the correct address:
+   1. Check the contract source on Etherscan to find the actual event definitions
+   2. Manually create the contract types file with the event ABI:
+      ```typescript
+      import { LogEvent } from '@subsquid/pipes/evm'
+      export const events = {
+        MyEvent: new LogEvent<{ param1: bigint; param2: string }>(
+          '0x<keccak256_of_event_signature>'
+        ),
+      }
+      ```
+   3. Compute the topic0 with: `cast keccak "EventName(type1,type2,...)"` or use an online keccak256 tool
+   4. This is a last resort — try typegen with the implementation address first
+
 6. **Contract file naming** (custom template):
    The generated contract file is named by address, not by `contractName`:
    ```
