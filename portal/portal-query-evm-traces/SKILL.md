@@ -256,6 +256,64 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 ---
 
+## Use Case: Contract Deployment Registry
+
+CREATE traces are the definitive source for contract deployment data. Use them to build contract registries, verify deployment blocks, and discover new protocol contracts.
+
+### Tracking Deployments from Known Deployers
+
+Query all contracts deployed by a specific protocol's deployer address:
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 15500000,
+  "toBlock": 17500000,
+  "traces": [{
+    "type": ["create"],
+    "createFrom": [
+      "0x54705f80d7c51fcffd9c659ce3f3c9a7dccf5788",
+      "0x2f39d218133afab8f2b819b1066c7e434ad94e9e"
+    ]
+  }],
+  "fields": {
+    "block": { "number": true, "timestamp": true },
+    "trace": {
+      "transactionIndex": true,
+      "createFrom": true,
+      "createResultAddress": true
+    }
+  }
+}
+```
+
+**Real-world results (tested):**
+- Rocket Pool minipool factory: 608 contract deployments discovered across blocks 15.5M-17M
+- Aave V3 PoolAddressesProvider: Pool proxy deployment at block 16291127 correctly identified
+- Compound V3 Comet Factory: new market deployments captured
+
+### Key Learnings
+
+**Response field names are nested:**
+```json
+{
+  "traces": [{
+    "transactionIndex": 157,
+    "action": { "from": "0xDeployer..." },
+    "result": { "address": "0xNewContract..." }
+  }]
+}
+```
+Access deployer as `trace.action.from` and new contract as `trace.result.address` (NOT `trace.createFrom` or `trace.createResultAddress` — those are request filter names, not response field names).
+
+**No `transactionHash` on traces** — only `transactionIndex`. To get the tx hash, include the transaction in your query or look it up separately.
+
+**Factory-deployed contracts:** Many DeFi protocols deploy via factory contracts (Uniswap, Morpho, Euler). The `createFrom` is the factory contract, not the protocol's EOA deployer. To track these, filter by the factory's address as `createFrom`.
+
+**CREATE2 deterministic deployments:** These also appear as `type: "create"` traces. The deployer address will be the factory using CREATE2. Same query pattern works.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-transactions** - Query top-level transactions that generate traces
