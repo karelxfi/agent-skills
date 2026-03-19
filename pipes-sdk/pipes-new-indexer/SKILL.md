@@ -457,21 +457,36 @@ After the CLI generates the project, verify these BEFORE running:
    **Non-standard proxy patterns (Aragon, Diamond, etc.):**
    Some protocols use non-standard proxy patterns where `evm-typegen` cannot auto-resolve the implementation. Examples:
    - **Lido** uses Aragon's `AppProxyUpgradeable` — typegen returns only `ProxyDeposit`
-   - **Diamond proxies (EIP-2535)** — multiple implementation facets
+   - **Pendle Router** is a Diamond proxy (EIP-2535) — typegen returns an empty `Contract` class with no events
+   - **Diamond proxies (EIP-2535)** — multiple implementation facets, typegen sees only the diamond cut functions
 
-   If typegen returns a proxy-only ABI even when given the correct address:
+   **How to detect:** If the generated contract file has `export class Contract extends ContractBase {}` with no `export const events`, it's likely a Diamond proxy. Also check: `grep "export const events" src/contracts/*.ts` — if empty, the ABI fetch failed.
+
+   If typegen returns a proxy-only or empty ABI:
    1. Check the contract source on Etherscan to find the actual event definitions
-   2. Manually create the contract types file with the event ABI:
+   2. Query Portal for the contract's actual topic0 values to discover which events it emits
+   3. Manually create the contract types file using the `event()` helper from `@subsquid/evm-abi`:
       ```typescript
-      import { LogEvent } from '@subsquid/pipes/evm'
+      import { event, indexed } from '@subsquid/evm-abi'
+      import * as p from '@subsquid/evm-codec'
+
       export const events = {
-        MyEvent: new LogEvent<{ param1: bigint; param2: string }>(
-          '0x<keccak256_of_event_signature>'
+        // Verify topic0 against on-chain data before using!
+        MySwap: event(
+          '0xabcdef...', // topic0 hash
+          'MySwap(address,address,uint256,int256)',
+          {
+            caller_: indexed(p.address),
+            market_: indexed(p.address),
+            amount_: p.uint256,
+            netFlow_: p.int256,
+          },
         ),
       }
       ```
-   3. Compute the topic0 with: `cast keccak "EventName(type1,type2,...)"` or use an online keccak256 tool
-   4. This is a last resort — try typegen with the implementation address first
+   4. **CRITICAL: Verify topic0 hashes against actual on-chain data.** Query Portal for the contract's events in a recent block range and match the topic0 values. Wrong topic0 = silent zero results.
+   5. **Watch for event signature version changes:** Some protocols change event parameters across upgrades. The same event name can have different data layouts in different blocks, causing `EventDecodingError: Offset is outside the bounds of the DataView`. If this happens, either filter to blocks after the upgrade or remove the problematic event.
+   6. This is a last resort — try typegen with the implementation address first
 
 6. **Contract file naming** (custom template):
    The generated contract file is named by address, not by `contractName`:
