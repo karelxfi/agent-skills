@@ -913,6 +913,23 @@ Always validate indexed data before production use:
 - Clear the sync table: `docker exec <container> clickhouse-client --query "DROP TABLE IF EXISTS pipes.sync"`
 - Restart the indexer - it will now start from the configured block
 
+## Common DeFi Protocol Fork Patterns
+
+Many DeFi protocols are forks of well-known codebases. Recognizing forks saves time — you can reuse the same event ABI with just a different proxy address.
+
+**Aave V3 forks** (same Pool ABI — Supply, Withdraw, Borrow, Repay, LiquidationCall, FlashLoan events):
+- SparkLend (Sky/MakerDAO ecosystem) — Pool: `0xC13e21B648A5Ee794902342038FF3aDAB66BE987`
+- Radiant Capital, Seamless Protocol, Granary Finance, etc.
+- Implementation ABI works across all forks — just update the proxy address
+
+**Uniswap V2 forks** (same Pair/Factory ABI — Swap, Mint, Burn, Sync events):
+- SushiSwap, PancakeSwap, TraderJoe, Camelot, etc.
+
+**Compound V2 forks** (same cToken ABI — Mint, Redeem, Borrow, RepayBorrow, LiquidateBorrow):
+- Venus, Benqi, Tectonic, etc.
+
+**How to detect:** Check the protocol's docs for "forked from" mentions, or compare the contract's event signatures against known ABIs. If the topic0 hashes match, it's a fork.
+
 ## Related Skills
 
 - See ENVIRONMENT_SETUP.md for setup verification - Verify environment first
