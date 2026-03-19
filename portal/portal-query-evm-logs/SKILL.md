@@ -281,6 +281,23 @@ See **portal-dataset-discovery** skill for full mapping.
 
 ---
 
+## Verifying Event Signatures Before Indexing
+
+> **⚠️ Always verify topic0 hashes against actual on-chain data before building an indexer.** Computed hashes from ABIs can be wrong for proxy contracts, Diamond proxies (EIP-2535), or contracts that changed event signatures across upgrades.
+
+**Verification workflow:**
+
+1. **Query actual topic0s from the contract** using Portal MCP's `portal_get_contract_activity` or `portal_count_events` grouped by topic0
+2. **Identify unknowns** — look up topic0 hashes on [4byte.directory](https://www.4byte.directory/) or [openchain.xyz](https://openchain.xyz/signatures)
+3. **Cross-reference with source code** — verify parameter types and indexed fields match
+
+**Real-world failures this prevents:**
+- wBETH: Computed `Deposit(address,uint256)` hash but actual event was `Deposit(address,address,uint256,uint256)` (extra params)
+- Pendle: `SwapYtAndToken` event changed data layout between Router V1 and V3 — older events cause `EventDecodingError` with the current ABI
+- Diamond proxies: Multiple facets emit different events through the same address — ABI from one facet misses events from others
+
+---
+
 ## Response Format
 
 Portal returns **JSON Lines** (one JSON object per line):

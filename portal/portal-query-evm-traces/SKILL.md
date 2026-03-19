@@ -76,9 +76,10 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 **INDEXED filter fields:**
 - `createFrom` - Deployer address (INDEXED)
-- `createResultAddress` - Deployed contract address (INDEXED)
 
-**Response fields:** `createResultCode` (deployed bytecode), `createValue`
+> **⚠️ `createResultAddress` is NOT a supported filter.** Despite being listed in some docs, Portal does not support filtering by deployed contract address. You can only filter by deployer (`createFrom`). To find who deployed a known contract, you must know the deployer address first, or scan without address filters over a narrow block range.
+
+**Response fields:** `createResultAddress` (deployed contract address), `createResultCode` (deployed bytecode), `createValue`
 
 ### 3. SUICIDE (SELFDESTRUCT) - Contract Destruction
 
@@ -248,6 +249,14 @@ Portal returns **JSON Lines** (one JSON object per line):
 2. Specific address + type
 3. Type only (broad)
 4. No filters (avoid)
+
+### Block Range Limits for CREATE Traces
+
+> **⚠️ Keep CREATE trace queries to ≤50K blocks per request.** Larger ranges (e.g., 500K blocks) cause Portal to silently drop results from the ndjson stream. This was discovered empirically — queries return partial data without errors. Chunk your queries and aggregate results.
+
+### Multi-Address Filter Gotcha
+
+When filtering `createFrom` with multiple addresses, high-volume deployers (e.g., factory contracts deploying thousands of pools) dominate the response and traces from other deployers may get lost. **Query each deployer address individually** for comprehensive results.
 
 **Avoid:**
 ```json
