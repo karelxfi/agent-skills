@@ -761,6 +761,33 @@ const stream = evmPortalSource({ portal: '...' }).pipeComposite({
 })
 ```
 
+**IMPORTANT: `contracts` field format.** For static contracts, pass an array of address strings:
+```typescript
+evmDecoder({ contracts: ['0xABC...', '0xDEF...'], events: { ... } })  // ✅ correct
+evmDecoder({ contracts: [{ address: ['0xABC...'] }], events: { ... } })  // ❌ wrong — crashes with "contract.toLowerCase is not a function"
+```
+The object format is ONLY for the `factory()` helper pattern.
+
+### Decoded Event Field Access in `.pipe()`
+
+When using `.pipeComposite()` with a manual `.pipe()` transform, each decoded event `d` has these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `d.event.*` | object | Decoded event parameters (e.g., `d.event.vault`, `d.event.assets`) |
+| `d.block.number` | number | Block number |
+| `d.rawEvent.transactionHash` | string | Transaction hash |
+| `d.rawEvent.logIndex` | number | Log index within the block |
+| `d.timestamp` | Date | Block timestamp as a JS Date object |
+| `d.contract` | string | Contract address that emitted the event |
+| `d.factory` | object/null | Factory metadata (only if using factory pattern) |
+
+> **⚠️ Common mistake:** Using `d.blockNumber` or `d.txHash` (which don't exist) instead of `d.block.number` and `d.rawEvent.transactionHash`. These silently return `undefined`, stored as `0` or `""` in ClickHouse.
+
+> **⚠️ DateTime64(3) timestamp gotcha:** When ClickHouse uses `DateTime64(3, 'UTC')`, pass ISO strings via `d.timestamp.toISOString()` with `date_time_input_format: 'best_effort'`. Passing epoch seconds (e.g., `1700392127`) to DateTime64(3) is misinterpreted as `1970-01-20`.
+
+This differs from the CLI-generated `enrichEvents` helper, which flattens everything into `{ blockNumber, txHash, timestamp, ...eventParams }`.
+
 ### Target Configuration (ClickHouse)
 
 ```typescript
