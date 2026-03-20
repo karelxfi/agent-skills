@@ -123,7 +123,7 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 ```
 
 **Notes:**
-- `dir` shows: "Open Long", "Open Short", "Close Long", "Close Short"
+- `dir` shows: "Open Long", "Open Short", "Close Long", "Close Short", "Long > Short" (position flip), "Short > Long", "Buy"/"Sell" (spot), "Net Child Vaults" (vault settlements)
 - `startPosition` shows the user's position size before this fill
 
 ---
@@ -172,7 +172,7 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 | `px` | float | Execution price |
 | `sz` | float | Trade size/quantity |
 | `user` | string | Trader's 0x address |
-| `dir` | string | "Open Long", "Open Short", "Close Long", "Close Short" |
+| `dir` | string | "Open Long", "Open Short", "Close Long", "Close Short", "Long > Short", "Short > Long", "Buy", "Sell", "Net Child Vaults" |
 | `closedPnl` | float | Realized PnL (negative = loss, zero for opens) |
 | `fee` | float | Fee amount (negative = rebate) |
 | `feeToken` | string | Fee denomination (e.g., "USDC") |
@@ -196,11 +196,14 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 
 **Side values:** `"B"` = Buy (bid), `"A"` = Ask (sell) — single-character codes only.
 
-**Direction values:**
+**Direction values (9 types):**
 - Buy + Open = "Open Long"
 - Buy + Close = "Close Short"
 - Sell + Open = "Open Short"
 - Sell + Close = "Close Long"
+- Position flip = "Long > Short" or "Short > Long" (close + open in opposite direction)
+- Spot trades = "Buy" or "Sell"
+- Vault settlements = "Net Child Vaults"
 
 ---
 
