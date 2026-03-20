@@ -41,8 +41,8 @@ Consult this documentation when you need to:
 - Wildcard vs pre-indexed approaches
 - **Use when**: Uniswap pools, protocol deployments
 
-#### 4. Parallel Event Decoding (pipeComposite)
-- Decode multiple independent event types
+#### 4. Parallel Event Decoding (multi-output)
+- Decode multiple independent event types via `outputs: { a: evmDecoder(...), b: evmDecoder(...) }`
 - Parallel processing
 - **Use when**: Unrelated events, different contracts
 
@@ -248,7 +248,7 @@ npm run dev
 | Simple EVM decoder | ~23,000 | Single contract, no transformations |
 | EVM with ClickHouse | ~18,000 | Includes database writes |
 | EVM with PostgreSQL | ~12,000 | YMMV by database setup |
-| pipeComposite (3 decoders) | ~15,000 | Parallel decoding overhead |
+| Multi-output (3 decoders) | ~15,000 | Parallel decoding overhead |
 | Multi-stage (4 stages) | ~8,000 | Each stage adds overhead |
 | Memory target | ~25,000 | No persistence overhead |
 
@@ -540,7 +540,7 @@ sqlite3 <project>/*.sqlite "SELECT COUNT(*) FROM factory_contracts" 2>/dev/null 
 - Need all historical deployments
 - Known contract list
 
-### Parallel Decoding (pipeComposite)
+### Parallel Decoding (multi-output)
 **Use when**:
 - Multiple independent event types
 - Different contracts

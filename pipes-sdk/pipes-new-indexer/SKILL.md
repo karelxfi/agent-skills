@@ -90,17 +90,18 @@ const query = new HyperliquidFillsQueryBuilder()
 
 **Choosing a start block:** Blocks increment at ~1/second. Use `current_block - (days × 86400)` to estimate. For a 7-day window, subtract ~604,800 from the current head block. A 7-day BTC/ETH/SOL sync yields ~6M fills in ~2-3 minutes.
 
-**Source:**
+**Source (SDK 1.0.0-alpha.1+):**
 ```typescript
 await hyperliquidFillsPortalSource({
+  id: 'hl-perps-fills',  // required unique pipe ID
   portal: 'https://portal.sqd.dev/datasets/hyperliquid-fills',
-  query,
+  outputs: query,  // query builder passed as outputs (replaces old `query` field)
 })
 ```
 
-**Data shape:** Each block has `header` (number, timestamp) and `fills` array. Use `.pipe()` to transform:
+**Data shape:** `.pipe()` receives `Block[]` directly (not `{ blocks }`). Each block has `header` (number, timestamp) and `fills` array:
 ```typescript
-.pipe(({ blocks }) => {
+.pipe((blocks) => {
   const fills = blocks.flatMap((block) =>
     block.fills.map((fill) => ({
       block_number: block.header.number,
@@ -754,12 +755,16 @@ The `uniswapV3Swaps` template uses the factory pattern for Uniswap pools, but yo
 
 ### Combining Multiple Decoders
 
-Use `.pipeComposite()` to run multiple named decoders in a single pipeline:
+Pass multiple named decoders as `outputs` to run them in a single pipeline (replaces old `pipeComposite`):
 
 ```typescript
-const stream = evmPortalSource({ portal: '...' }).pipeComposite({
-  transfers: evmDecoder({ events: { transfers: commonAbis.erc20.events.Transfer } }),
-  swaps: evmDecoder({ events: { swaps: uniswapV3Abi.events.Swap } }),
+const stream = evmPortalSource({
+  id: 'my-indexer',
+  portal: '...',
+  outputs: {
+    transfers: evmDecoder({ events: { transfers: commonAbis.erc20.events.Transfer } }),
+    swaps: evmDecoder({ events: { swaps: uniswapV3Abi.events.Swap } }),
+  },
 })
 ```
 
@@ -772,7 +777,7 @@ The object format is ONLY for the `factory()` helper pattern.
 
 ### Decoded Event Field Access in `.pipe()`
 
-When using `.pipeComposite()` with a manual `.pipe()` transform, each decoded event `d` has these fields:
+When using `evmDecoder` with a `.pipe()` transform, each decoded event `d` has these fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
