@@ -21,6 +21,27 @@ Use this skill when you need to:
 
 ---
 
+## Pre-Build: Estimate Instruction Volume
+
+**Before building an indexer, always verify the program has sufficient instruction volume.** Query Portal for a 10K-slot sample to estimate throughput:
+
+```bash
+curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
+  -H 'content-type: application/json' \
+  -H 'accept: application/x-ndjson' \
+  -d '{"type":"solana","fromBlock":280000000,"toBlock":280010000,"instructions":[{"programId":["YOUR_PROGRAM_ID"]}],"fields":{"instruction":{"programId":true}}}' \
+  | wc -l
+```
+
+**Rules of thumb:**
+- **< 50 instructions per 10K slots** — very low volume. Investigate if the program is a router that delegates to other programs. Consider indexing the related programs too.
+- **50-500 per 10K slots** — moderate. Suitable for indexing but let it sync longer for meaningful data.
+- **500+ per 10K slots** — high volume, ideal for indexing.
+
+*Lesson learned:* Sanctum Router had only ~2 instructions per 1K slots because most activity flows through the S Controller (Infinity pool). The Router is just a thin wrapper.
+
+---
+
 ## Query Structure
 
 **Basic Solana instruction query structure:**
@@ -192,12 +213,14 @@ function getDiscriminator(name: string): string {
 
 ### Transaction Fields
 
+> **COMMON MISTAKE:** The field is `"signatures"` (plural, array) NOT `"signature"`. Using `"signature"` causes an "unknown field" error from Portal.
+
 ```json
 {
   "feePayer": true,             // Transaction initiator (wallet)
   "fee": true,                  // Transaction fee (lamports)
   "err": true,                  // Error object (null = success)
-  "signatures": true,           // Transaction signatures
+  "signatures": true,           // Transaction signatures (PLURAL — not "signature")
   "accountKeys": true,          // All account keys in transaction
   "version": true,              // Transaction version
   "computeUnitsConsumed": true, // CU used by transaction
