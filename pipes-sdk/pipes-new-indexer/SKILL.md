@@ -410,6 +410,8 @@ For complete deployment guide (local Docker or ClickHouse Cloud), see pipes-depl
 
 ### Step 3.5: Post-Generation Verification Checklist
 
+> **PROXY CHECK IS #1 PRIORITY.** In real-world experience, 6 out of 9 indexers required manual proxy resolution. This is the most common failure mode. Always check proxy status BEFORE doing anything else (step 5 below).
+
 After the CLI generates the project, verify these BEFORE running:
 
 1. **Factory address injected** (uniswapV3Swaps template only):
