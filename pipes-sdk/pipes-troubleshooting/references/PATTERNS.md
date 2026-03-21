@@ -41,12 +41,20 @@ Consult this documentation when you need to:
 - Wildcard vs pre-indexed approaches
 - **Use when**: Uniswap pools, protocol deployments
 
-#### 4. Parallel Event Decoding (multi-output)
+#### 4. Topic0-Only Global Filtering
+- Track events across ALL contracts without knowing addresses
+- Omit `contracts` field from `evmDecoder` — filters by topic0 only
+- **Use when**: Event signature is unique to the protocol (ReallocateSupply, StrategyReported), factory-deployed contracts where you want all instances
+- **Don't use when**: Event signature is generic (Transfer, Deposit) — too many false positives
+- **Advantage over factory pattern**: Zero cold-start delay, no SQLite database needed, simpler setup
+- **Example**: MetaMorpho vault reallocations (evm/039), Yearn V2 strategy harvests (evm/037)
+
+#### 5. Parallel Event Decoding (multi-output)
 - Decode multiple independent event types via `outputs: { a: evmDecoder(...), b: evmDecoder(...) }`
 - Parallel processing
 - **Use when**: Unrelated events, different contracts
 
-#### 5. Event Parameter Filtering (Server-Side)
+#### 6. Event Parameter Filtering (Server-Side)
 - Filter by indexed parameters at Portal
 - Dramatically reduce bandwidth
 - **Use when**: High-volume contracts, known addresses
