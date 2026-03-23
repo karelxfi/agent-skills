@@ -753,6 +753,44 @@ The `uniswapV3Swaps` template uses the factory pattern for Uniswap pools, but yo
 - Child contracts: ERC-4626 vaults emitting `Deposit`, `Withdraw`, etc.
 - Metadata from creation event: `name`, `symbol`, `asset` — accessible via `d.factory?.event`
 
+### Topic0-Only Global Filtering (No Contracts Array)
+
+Track events across **all contracts** that emit a specific event signature, without needing to know addresses upfront. Simply omit the `contracts` field from `evmDecoder`:
+
+```typescript
+// Captures ReallocateSupply from ALL MetaMorpho vaults — no address list needed
+const reallocations = evmDecoder({
+  range: { from: 18_900_000 },
+  events: {
+    ReallocateSupply: vaultAbi.ReallocateSupply,
+    ReallocateWithdraw: vaultAbi.ReallocateWithdraw,
+  },
+  // NO contracts field — topic0-only filtering
+})
+```
+
+**When to use topic0-only vs factory pattern:**
+
+| | Topic0-Only | Factory Pattern |
+|---|---|---|
+| Setup complexity | Minimal — just omit `contracts` | Requires factory ABI, SQLite DB |
+| Cold-start delay | None — instant data | 30-60s while discovering child contracts |
+| Metadata enrichment | No — only `d.contract` for emitter address | Yes — `d.factory?.event` gives creation params |
+| False positives | Possible if event sig is generic | None — only tracks factory children |
+| Best for | Unique events (ReallocateSupply, StrategyReported) | Generic events (Deposit, Transfer) on specific contracts |
+
+**Use topic0-only when:**
+- Event signature is **unique to the protocol** (won't match unrelated contracts)
+- You want to capture events across ALL instances (all vaults, all pools)
+- You don't need metadata from the factory creation event
+- You want zero setup and instant data
+
+**Don't use topic0-only when:**
+- Event signature is generic (Transfer, Approval, Deposit) — matches too many unrelated contracts
+- You need creation event metadata (vault names, asset addresses)
+
+**Real examples:** Yearn V2 `StrategyReported` (evm/037), MetaMorpho `ReallocateSupply`/`ReallocateWithdraw` (evm/039)
+
 ### Combining Multiple Decoders
 
 Pass multiple named decoders as `outputs` to run them in a single pipeline (replaces old `pipeComposite`):
