@@ -87,9 +87,18 @@ curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
 - `d4` - First 4 bytes of data
 - `d8` - First 8 bytes of data (most common for Anchor programs)
 
-### Recommended: Use `@subsquid/solana-typegen` for Discriminators
+### Anchor vs Non-Anchor Programs
 
-**Never compute discriminators manually.** Use the Solana typegen tool to generate typed decoders from IDLs — it provides correct discriminators automatically:
+**Typegen only works for Anchor programs (d8).** Non-Anchor programs (SPL Token, SPL Stake Pool, System Program) use `d1` single-byte discriminators and require manual decoding. See `pipes-new-indexer` skill for the full non-Anchor workflow.
+
+| Program Type | Discriminator | Typegen? | Examples |
+|---|---|---|---|
+| Anchor | `d8` (8 bytes) | Yes | Orca Whirlpool, Jito Tips, Jupiter Lend |
+| Non-Anchor | `d1` (1 byte) | No | SPL Token (`0x03`=Transfer), SPL Stake Pool (`0x0e`=DepositSol) |
+
+### Recommended for Anchor: Use `@subsquid/solana-typegen`
+
+For Anchor programs, use typegen to get correct discriminators automatically:
 
 ```bash
 # Install

@@ -54,9 +54,23 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 
 **NOTE**: The SVM `custom` template may fail with `Invalid input: expected array, received undefined`. If so, scaffold the project manually (package.json, tsconfig, src/index.ts, docker-compose.yml).
 
-### Solana Typegen (CRITICAL — always use for Solana indexers)
+### Solana Program Types: Anchor vs Non-Anchor
 
-**`@subsquid/solana-typegen` generates typed instruction decoders from IDLs** — the Solana equivalent of `@subsquid/evm-typegen`. Never manually compute discriminators or decode instruction data by hand.
+**Before writing any Solana indexer, determine if the program is Anchor or non-Anchor.** This dictates your entire approach:
+
+| | Anchor Programs | Non-Anchor Programs |
+|---|---|---|
+| Discriminator | `d8` (8 bytes, from `sha256("global:<name>")`) | `d1` (1 byte, Borsh enum index) |
+| Typegen | Yes — `@subsquid/solana-typegen` | No — manual Borsh decoding |
+| IDL available | On-chain or GitHub (`target/idl/*.json`) | No IDL — read Rust source |
+| Decoding | `instructions.swap.decode(ins)` → typed `{ accounts, data }` | Manual: read bytes from base58-decoded data |
+| Examples | Jito Tip Distribution, Jupiter Lend, Orca Whirlpool | SPL Token, SPL Stake Pool, System Program |
+
+**How to detect:** Query Portal for the program's instructions and check `d8` values. If they're 8-byte hex (`0x3ec6d6c1d59f6cd2`), it's Anchor. If the meaningful discriminator is `d1` (single byte like `0x0e`), it's non-Anchor.
+
+### Anchor Programs: Use Typegen
+
+**`@subsquid/solana-typegen` generates typed instruction decoders from Anchor IDLs.** Use this for all Anchor programs — never manually compute d8 discriminators.
 
 **Install:**
 ```bash
@@ -135,14 +149,85 @@ const query = new SolanaQueryBuilder()
 3. **Anchor IDL registries**: Programs built with Anchor store IDLs at a PDA derived from the program ID
 4. **Protocol docs**: Some protocols link to their IDL files directly
 
-**When typegen fails** (non-Anchor programs, custom serialization):
-- Fall back to manual discriminator discovery: query Portal for ALL instructions, extract d8 from raw data
-- Some programs (SPL Token) use 1-byte discriminators (`d1`) not 8-byte (`d8`)
-
-**When on-chain IDL is not available:**
+**When on-chain IDL is not available (still Anchor):**
 - Some Anchor programs don't store IDLs on-chain. The `programId#name` format will fail with "Failed to fetch IDL"
 - Download the IDL from the protocol's GitHub repo (usually `target/idl/<program>.json`)
 - Pass local files to typegen: `npx squid-solana-typegen src/abi ./idl/*.json`
+
+### Non-Anchor Programs: Manual d1 Decoding
+
+**Typegen does NOT work for non-Anchor programs** (SPL Token, SPL Stake Pool, System Program, etc.). These use single-byte Borsh enum discriminators (`d1`) and require manual decoding.
+
+**Step 1: Discover d1 discriminators from Portal**
+```bash
+# Query ALL instructions from the program in a small slot range
+curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
+  -H 'content-type: application/json' \
+  -H 'accept: application/x-ndjson' \
+  -d '{"type":"solana","fromBlock":400000000,"toBlock":400010000,
+       "instructions":[{"programId":["SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"]}],
+       "fields":{"instruction":{"programId":true,"d1":true}}}' \
+  | python3 -c "import sys,json; counts={}
+for l in sys.stdin:
+  for i in json.loads(l).get('instructions',[]):
+    d=i.get('d1','?'); counts[d]=counts.get(d,0)+1
+for k,v in sorted(counts.items(),key=lambda x:-x[1]): print(f'{k}: {v}')"
+```
+
+**Step 2: Map d1 values to instruction names from the Rust source**
+```typescript
+// SPL Stake Pool instruction discriminators (from instruction.rs enum order)
+const INSTRUCTIONS: Record<string, string> = {
+  '0x09': 'DepositStake',
+  '0x0a': 'WithdrawStake',
+  '0x0e': 'DepositSol',
+  '0x10': 'WithdrawSol',
+  '0x18': 'DepositSolWithSlippage',
+  '0x19': 'WithdrawSolWithSlippage',
+}
+```
+
+**Step 3: Filter by d1 in SolanaQueryBuilder**
+```typescript
+const query = new SolanaQueryBuilder()
+  .addFields({
+    block: { number: true, timestamp: true },
+    transaction: { transactionIndex: true, signatures: true },
+    instruction: { transactionIndex: true, programId: true, data: true, accounts: true },
+  })
+  .addInstruction({
+    range: { from: FROM_SLOT },
+    request: {
+      programId: [SPL_STAKE_POOL],
+      d1: Object.keys(INSTRUCTIONS),  // d1 filter, NOT d8
+      isCommitted: true,
+      transaction: true,
+    },
+  })
+```
+
+**Step 4: Decode manually in .pipe()**
+```typescript
+// Base58 decode the instruction data, then read fields
+const data = base58Decode(ins.data)
+const d1Hex = '0x' + data[0].toString(16).padStart(2, '0')
+const instrName = INSTRUCTIONS[d1Hex]
+
+// Read u64 LE amount after the d1 byte (if present)
+let amount = 0n
+if (data.length >= 9) {
+  for (let i = 0; i < 8; i++) {
+    amount |= BigInt(data[1 + i]) << BigInt(i * 8)
+  }
+}
+
+// Pool account is typically a0
+const pool = ins.accounts?.[0] ?? ''
+```
+
+**Real examples:** SPL Stake Pool (solana/006), Kamino Lend uses d8 but manual decode (solana/001)
+
+**Volume warning:** Many non-Anchor programs (especially SPL Stake Pool) have very low on-chain instruction volume. Always check volume with Portal BEFORE building — see the "Pre-Build: Estimate Instruction Volume" section in the portal-query-solana-instructions skill.
 
 **CPI (Cross-Program Invocation) — CRITICAL for many DeFi protocols:**
 - Many Solana DeFi protocols use a layered architecture where user-facing programs call core programs via CPI
