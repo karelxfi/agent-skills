@@ -138,7 +138,31 @@ const query = new SolanaQueryBuilder()
 **When typegen fails** (non-Anchor programs, custom serialization):
 - Fall back to manual discriminator discovery: query Portal for ALL instructions, extract d8 from raw data
 - Some programs (SPL Token) use 1-byte discriminators (`d1`) not 8-byte (`d8`)
-- CPI (inner instructions) may require `include_inner_instructions: true` in the query
+
+**When on-chain IDL is not available:**
+- Some Anchor programs don't store IDLs on-chain. The `programId#name` format will fail with "Failed to fetch IDL"
+- Download the IDL from the protocol's GitHub repo (usually `target/idl/<program>.json`)
+- Pass local files to typegen: `npx squid-solana-typegen src/abi ./idl/*.json`
+
+**CPI (Cross-Program Invocation) — CRITICAL for many DeFi protocols:**
+- Many Solana DeFi protocols use a layered architecture where user-facing programs call core programs via CPI
+- Example: Jupiter Lend's Lending/Vaults programs call the Liquidity program's `operate` instruction via CPI
+- If your indexer returns zero data but Portal shows instructions exist, the instructions are likely CPI (inner instructions)
+- **Fix**: Add `innerInstructions: true` to the `addInstruction()` request:
+  ```typescript
+  .addInstruction({
+    range: { from: FROM_SLOT },
+    request: {
+      programId: [myProgram.programId],
+      d8: [myProgram.instructions.operate.d8],
+      isCommitted: true,
+      transaction: true,
+      innerInstructions: true,  // Required for CPI calls
+    },
+  })
+  ```
+- **How to detect**: Query Portal for the program's instructions, then check `instructionAddress` field — if all entries have `len > 1`, they're all CPI
+- Without this flag, the indexer silently captures zero data — Portal cross-reference in validate.ts will catch this
 
 **CRITICAL**: Template IDs must use camelCase format. Each template has specific required `params` - check the schema.
 
