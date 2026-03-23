@@ -54,11 +54,91 @@ Use `npx @iankressin/pipes-cli@latest init --schema` to see the full list of ava
 
 **NOTE**: The SVM `custom` template may fail with `Invalid input: expected array, received undefined`. If so, scaffold the project manually (package.json, tsconfig, src/index.ts, docker-compose.yml).
 
-**Solana discriminator discovery (IMPORTANT):** Don't trust computed Anchor discriminators blindly. Always verify against actual on-chain data first:
-1. Query Portal for ALL instructions from the program (no d8 filter) in a small slot range
-2. Extract the actual d8 bytes from instruction data to see which discriminators exist
-3. Match discovered discriminators against the program's IDL
-4. Some programs route user actions through CPI (inner instructions) — you may need `include_inner_instructions: true`
+### Solana Typegen (CRITICAL — always use for Solana indexers)
+
+**`@subsquid/solana-typegen` generates typed instruction decoders from IDLs** — the Solana equivalent of `@subsquid/evm-typegen`. Never manually compute discriminators or decode instruction data by hand.
+
+**Install:**
+```bash
+npm install @subsquid/solana-typegen
+```
+
+**Generate types from IDL (3 methods):**
+```bash
+# Method 1: Local IDL JSON file
+npx squid-solana-typegen src/abi whirlpool.json
+
+# Method 2: Fetch IDL from on-chain (Anchor programs store IDLs on-chain)
+npx squid-solana-typegen src/abi whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc#whirlpool
+
+# Method 3: Glob pattern for multiple IDLs
+npx squid-solana-typegen src/abi ./idl/*
+```
+
+**What it generates:** A TypeScript module exporting:
+- `programId` — the program's public key constant
+- `instructions.<name>.d8` — 8-byte discriminator for each instruction
+- `instructions.<name>.decode(ins)` — typed decoder returning `{ accounts, data }`
+- `instructions.<name>.accountSelection(mapping)` — helper for account-position filtering
+
+**Usage with SolanaQueryBuilder:**
+```typescript
+import * as whirlpool from './abi/whirlpool'
+import { solanaPortalSource, SolanaQueryBuilder } from '@subsquid/pipes/solana'
+
+const query = new SolanaQueryBuilder()
+  .addFields({
+    block: { number: true, timestamp: true },
+    transaction: { signatures: true },
+    instruction: { programId: true, accounts: true, data: true },
+  })
+  .addInstruction({
+    range: { from: 280000000 },
+    request: {
+      programId: [whirlpool.programId],
+      d8: [whirlpool.instructions.swap.d8],
+      // Account-position filtering (optional — replaces manual a0/a1 filters):
+      ...whirlpool.instructions.swap.accountSelection({
+        whirlpool: ['7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm']
+      }),
+      transaction: true,
+    },
+  })
+```
+
+**Decoding instructions in .pipe():**
+```typescript
+.pipe((blocks) => {
+  const swaps = []
+  for (const block of blocks) {
+    for (const ins of block.instructions ?? []) {
+      if (ins.programId === whirlpool.programId &&
+          ins.d8 === whirlpool.instructions.swap.d8) {
+        const decoded = whirlpool.instructions.swap.decode(ins)
+        // decoded.accounts — typed account addresses
+        // decoded.data — typed instruction parameters
+        swaps.push({
+          slot: block.header.number,
+          timestamp: new Date(block.header.timestamp * 1000).toISOString(),
+          ...decoded.data,
+        })
+      }
+    }
+  }
+  return { swaps }
+})
+```
+
+**Where to find IDLs:**
+1. **On-chain** (Anchor programs): Use `npx squid-solana-typegen src/abi <programId>#<name>` — this queries the chain directly
+2. **GitHub**: Most protocols publish IDLs in their repos (e.g., `target/idl/<program>.json`)
+3. **Anchor IDL registries**: Programs built with Anchor store IDLs at a PDA derived from the program ID
+4. **Protocol docs**: Some protocols link to their IDL files directly
+
+**When typegen fails** (non-Anchor programs, custom serialization):
+- Fall back to manual discriminator discovery: query Portal for ALL instructions, extract d8 from raw data
+- Some programs (SPL Token) use 1-byte discriminators (`d1`) not 8-byte (`d8`)
+- CPI (inner instructions) may require `include_inner_instructions: true` in the query
 
 **CRITICAL**: Template IDs must use camelCase format. Each template has specific required `params` - check the schema.
 
