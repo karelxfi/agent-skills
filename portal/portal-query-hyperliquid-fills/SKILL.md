@@ -188,6 +188,23 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 
 ## Key Concepts
 
+**Portal API endpoint format:**
+The raw Portal Stream API endpoint for Hyperliquid fills is:
+```
+POST https://portal.sqd.dev/datasets/hyperliquid-fills/stream
+```
+Note the `/stream` suffix — omitting it returns a 404. The request body uses the `fills` filter (NOT wrapped in a `request` object):
+```json
+{
+  "type": "hyperliquidFills",
+  "fromBlock": 800000000,
+  "toBlock": 800000100,
+  "fills": [{}],
+  "fields": { "fill": { "coin": true }, "block": { "number": true } }
+}
+```
+The `fills` array contains filter objects directly: `[{ "coin": ["BTC"] }]`, NOT `[{ "request": { "coin": ["BTC"] } }]`. The `request` wrapper is a Pipes SDK concept (`addFill({ request: ... })`), not a Portal API concept.
+
 **Timestamps are in milliseconds** (unlike EVM chains which use seconds):
 ```json
 {"header":{"number":800000000,"timestamp":1763423558592}}
@@ -204,6 +221,25 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 - Position flip = "Long > Short" or "Short > Long" (close + open in opposite direction)
 - Spot trades = "Buy" or "Sell"
 - Vault settlements = "Net Child Vaults"
+
+**Coin naming conventions — TradFi vs Crypto classification:**
+Hyperliquid lists traditional finance (TradFi) assets alongside crypto. Coin names follow these patterns:
+- **Plain names** = crypto: `BTC`, `ETH`, `SOL`, `HYPE`, `DOGE`, `kPEPE`
+- **`cash:` prefix** = TradFi (legacy prefix): `cash:TSLA`, `cash:GOLD`, `cash:USA500`
+- **`xyz:` prefix** = TradFi (newer prefix): `xyz:GOLD`, `xyz:SILVER`, `xyz:PLATINUM`, `xyz:XYZ100`, `xyz:TSLA`
+- **`@NNN` format** = HIP-3 permissionless market listings: `@230`, `@107`, `@156`
+
+Some plain-name tickers are actually TradFi equities/ETFs on Hyperliquid (no prefix):
+`HOOD`, `GOOGL`, `TSM`, `NATGAS`, `PLATINUM`, `EWY`, `EWJ`, `CRWV`, `SNDK`, `SKHX`
+
+For classification in indexers, use pattern matching:
+```javascript
+function isTradFi(coin) {
+  return coin.startsWith('cash:') || coin.startsWith('xyz:')
+    || ['HOOD','GOOGL','TSM','NATGAS','PLATINUM','EWY','EWJ','CRWV','SNDK','SKHX'].includes(coin);
+}
+function isHip3(coin) { return coin.startsWith('@'); }
+```
 
 ---
 
@@ -256,6 +292,30 @@ Hyperliquid timestamps are in **milliseconds**. Divide by 1000 when comparing wi
 - `hyperliquid-fills` - Trade fills data (this skill, use `"type": "hyperliquidFills"`)
 - `hyperliquid-mainnet` - HyperEVM chain (use `"type": "evm"`)
 - `hyperliquid-testnet` - HyperEVM testnet (use `"type": "evm"`)
+
+---
+
+### Mistake 7: Wrapping Fill Filters in `request` Object (Portal API)
+
+```json
+{"fills": [{"request": {"coin": ["BTC"]}}]}
+```
+**Fix:** The Portal Stream API takes filter fields directly — `request` is a Pipes SDK wrapper:
+```json
+{"fills": [{"coin": ["BTC"]}]}
+```
+
+---
+
+### Mistake 8: Missing `/stream` Suffix on Portal URL
+
+```
+POST https://portal.sqd.dev/datasets/hyperliquid-fills
+```
+**Fix:** The Portal Stream API requires the `/stream` path:
+```
+POST https://portal.sqd.dev/datasets/hyperliquid-fills/stream
+```
 
 ---
 
