@@ -281,6 +281,23 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_query_hyperliquid_fills`** | Standard queries by user, coin, direction, timeframe. Fastest path — no block math needed |
+| **Raw Stream API (curl/fetch)** | Custom field selection, builder fee analysis, or streaming large datasets to files |
+
+**Example — MCP quick path:**
+Use `portal_query_hyperliquid_fills` with `coin: ["BTC", "ETH"]`, `timeframe: "24h"`. Set `include_pnl: true` for PnL tracking.
+
+**Example — when to use raw API:**
+When you need `include_builder_info: true` for builder fee analysis, or when piping millions of fills to a file for offline processing.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-logs** - Query EVM event logs on HyperEVM (`hyperliquid-mainnet`)

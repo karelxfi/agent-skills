@@ -155,7 +155,7 @@ contracts: [
 events: {
   transfer: commonAbis.erc20.events.Transfer,
 }
-.pipe(({ transfers }) =>
+.pipe((transfers) =>
   transfers.filter(t => t.event.from === ADDRESS)
 )
 

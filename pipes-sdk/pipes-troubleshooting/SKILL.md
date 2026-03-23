@@ -435,6 +435,8 @@ TypeError: Cannot read properties of undefined (reading 'from')
 
 **Diagnosis**: The `addFill()` method requires a `range` parameter. Unlike EVM decoders where range is set once, each Hyperliquid fill filter needs its own range.
 
+**Note:** In SDK 1.0+, use `hyperliquidFillsQuery()` instead of `new HyperliquidFillsQueryBuilder()`. The error behavior is the same.
+
 **Fix**:
 ```typescript
 // WRONG

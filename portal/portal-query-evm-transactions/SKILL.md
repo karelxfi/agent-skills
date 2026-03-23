@@ -293,6 +293,25 @@ With `"logs": true` - transactions that emitted logs will have a `logs` array in
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_query_transactions`** | Standard queries by sender, recipient, sighash, block range. Fastest path |
+| **MCP `portal_get_recent_transactions`** | Quick look at recent activity — auto-calculates block ranges from timeframes like `'1h'`, `'24h'` |
+| **MCP `portal_get_wallet_summary`** | Overview of a wallet's recent txs + token transfers in one call |
+| **Raw Stream API (curl/fetch)** | Custom field selection, nonce filtering, joining with logs/traces/state-diffs, or streaming large datasets |
+
+**Example — MCP quick path:**
+Use `portal_get_recent_transactions` with `dataset`, `from_addresses` or `to_addresses`, and a `timeframe`. No block number math needed.
+
+**Example — when to use raw API:**
+When you need `include_logs: true` or `include_traces: true` to get full transaction context in a single query.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-logs** - Query logs emitted by these transactions

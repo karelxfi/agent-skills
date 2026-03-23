@@ -410,7 +410,7 @@ When indexer finds 0 events but contract clearly has activity:
 
 **Rule:** The exported constant name MUST exactly match the `templateId` field.
 
-**Why:** pipeComposite references templates by their templateId. Mismatched names cause `TypeError: v.id is not a function`.
+**Why:** The multi-output pattern references templates by their templateId. Mismatched names cause `TypeError: v.id is not a function`.
 
 **Pattern:**
 ```typescript

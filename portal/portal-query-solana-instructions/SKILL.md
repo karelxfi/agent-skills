@@ -381,6 +381,23 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_query_solana_instructions`** | Standard queries by program ID, discriminator (d1-d8), account filters (a0-a15). Fastest path |
+| **Raw Stream API (curl/fetch)** | Custom field selection, joining with transaction balances/token balances/logs, or streaming large datasets |
+
+**Example — MCP quick path:**
+Use `portal_query_solana_instructions` with `program_id`, `d8`, and account filters. Set `include_inner_instructions: true` for CPI calls.
+
+**Example — when to use raw API:**
+When you need `include_transaction_token_balances: true` to track SPL balance changes alongside instructions.
+
+---
+
 ## Related Skills
 
 - **portal-dataset-discovery** - Find correct Solana dataset name

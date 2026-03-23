@@ -323,6 +323,23 @@ Access deployer as `trace.action.from` and new contract as `trace.result.address
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_query_traces`** | Standard trace queries by type (call/create/suicide), caller, recipient, sighash. Fastest path |
+| **Raw Stream API (curl/fetch)** | Complex filter combinations, joining traces with parent transaction logs, or streaming large datasets |
+
+**Example — MCP quick path:**
+Use `portal_query_traces` with `type: ["create"]` and `create_from` to find all contracts deployed by an address. Use `field_preset: "minimal"` for smallest response.
+
+**Example — when to use raw API:**
+When you need `include_transaction_logs: true` to correlate internal calls with emitted events, or when building MEV analysis pipelines.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-transactions** - Query top-level transactions that generate traces

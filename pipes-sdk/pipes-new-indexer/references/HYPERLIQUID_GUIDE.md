@@ -79,7 +79,7 @@ PARTITION BY toYYYYMM(timestamp);
 import 'dotenv/config'
 import path from 'node:path'
 import { createClient } from '@clickhouse/client'
-import { hyperliquidFillsPortalSource, HyperliquidFillsQueryBuilder } from '@subsquid/pipes/hyperliquid'
+import { hyperliquidFillsPortalStream, hyperliquidFillsQuery } from '@subsquid/pipes/hyperliquid'
 import { clickhouseTarget } from '@subsquid/pipes/targets/clickhouse'
 import { z } from 'zod'
 
@@ -92,7 +92,7 @@ const env = z
   })
   .parse(process.env)
 
-const query = new HyperliquidFillsQueryBuilder()
+const query = hyperliquidFillsQuery()
   .addRange({ from: 920000000 })
   .addFields({
     block: { number: true, timestamp: true },
@@ -113,7 +113,7 @@ const query = new HyperliquidFillsQueryBuilder()
   .addFill({ range: { from: 920000000 }, request: { coin: ['BTC', 'ETH', 'SOL'] } })
 
 export async function main() {
-  await hyperliquidFillsPortalSource({
+  await hyperliquidFillsPortalStream({
     id: 'hl-perps-fills',
     portal: 'https://portal.sqd.dev/datasets/hyperliquid-fills',
     outputs: query,
@@ -217,7 +217,7 @@ npm run dev
 
 ## API Reference
 
-### HyperliquidFillsQueryBuilder
+### hyperliquidFillsQuery
 
 Builder for constructing Hyperliquid fills queries.
 
@@ -266,7 +266,7 @@ const WHALES = [
   '0xe3b6e3443c8f2080704e7421bad9340f13950acb',
 ]
 
-const query = new HyperliquidFillsQueryBuilder()
+const query = hyperliquidFillsQuery()
   .addRange({ from: 920000000 })
   .addFields({
     block: { number: true, timestamp: true },
@@ -318,7 +318,7 @@ Track fills across many coins including alts and memes:
 // Note: Use kPEPE/kBONK/kFLOKI (not PEPE/BONK/FLOKI). Discover tickers with a broad query first.
 const COINS = ['BTC', 'ETH', 'SOL', 'HYPE', 'DOGE', 'WIF', 'ARB', 'SUI', 'AVAX']
 
-const query = new HyperliquidFillsQueryBuilder()
+const query = hyperliquidFillsQuery()
   .addRange({ from: 924000000 })
   .addFields({
     block: { number: true, timestamp: true },
@@ -413,7 +413,7 @@ Hyperliquid timestamps work differently from EVM indexers:
 
 ### 3. No evmDecoder — use .pipe() directly
 
-Hyperliquid fills don't use `evmDecoder`. The source yields `{ blocks }` where each block has `header` and `fills`. Use `.pipe()` to transform the data yourself.
+Hyperliquid fills don't use `evmDecoder`. `.pipe()` receives `Block[]` directly where each block has `header` and `fills`. Use `.pipe()` to transform the data yourself.
 
 ### 4. Portal URL includes the dataset name
 

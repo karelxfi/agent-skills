@@ -230,6 +230,21 @@ POST /datasets/binance-mainnet/stream
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick discovery before falling back to manual verification:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_list_datasets`** | Search available datasets by name, chain type (evm/solana), or network type (mainnet/testnet) |
+| **MCP `portal_get_dataset_info`** | Get detailed info about a specific dataset: latest block, start block, chain type, available tables |
+| **Manual verification (curl)** | When MCP tools aren't available, or to verify a dataset URL before using in code |
+
+**Example — MCP quick path:**
+Use `portal_list_datasets` with `query: "arbitrum"` to find the correct Portal name. Then `portal_get_dataset_info` with `dataset: "arbitrum-one"` to confirm it exists and check the latest block.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-logs** - Query EVM chain logs (use correct dataset name)

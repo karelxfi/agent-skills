@@ -311,6 +311,25 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 ---
 
+## MCP Tools vs Raw API
+
+If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
+
+| Approach | When to Use |
+|----------|------------|
+| **MCP `portal_query_logs`** | Quick queries with standard filters (address, topic0-3, block range). Fastest path — no curl needed |
+| **MCP `portal_decode_logs`** | Auto-decode known events (Transfer, Swap, Deposit, etc.) without computing topic0 yourself |
+| **MCP `portal_count_events`** | Count events by contract or event type without fetching full data (~99% smaller response) |
+| **Raw Stream API (curl/fetch)** | Complex filter combinations, custom field selection, piping to files, or when MCP tools aren't available |
+
+**Example — MCP quick path:**
+Use `portal_query_logs` with `addresses`, `topic0`, `from_block`, `to_block` parameters. It handles the POST request and JSON parsing for you.
+
+**Example — when to use raw API:**
+When you need `include_transaction: true` to join log data with parent transaction fields, or when streaming large datasets to files.
+
+---
+
 ## Related Skills
 
 - **portal-query-evm-transactions** - Query transactions that emitted these logs

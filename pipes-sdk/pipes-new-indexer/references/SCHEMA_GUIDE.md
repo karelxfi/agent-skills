@@ -150,7 +150,7 @@ d.event.marketParams.lltv.toString() // BigInt → String
 ## BigInt Transformation in TypeScript
 
 ```typescript
-.pipe(({ events }) =>
+.pipe((events) =>
   events.map((e) => ({
     block_number:     e.block.number,
     block_timestamp:  new Date(e.timestamp).toISOString().replace('Z', ''),

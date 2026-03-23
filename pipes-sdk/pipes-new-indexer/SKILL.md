@@ -98,9 +98,9 @@ npx squid-solana-typegen src/abi ./idl/*
 **Usage with SolanaQueryBuilder:**
 ```typescript
 import * as whirlpool from './abi/whirlpool'
-import { solanaPortalSource, SolanaQueryBuilder } from '@subsquid/pipes/solana'
+import { solanaPortalStream, solanaQuery } from '@subsquid/pipes/solana'
 
-const query = new SolanaQueryBuilder()
+const query = solanaQuery()
   .addFields({
     block: { number: true, timestamp: true },
     transaction: { signatures: true },
@@ -189,7 +189,7 @@ const INSTRUCTIONS: Record<string, string> = {
 
 **Step 3: Filter by d1 in SolanaQueryBuilder**
 ```typescript
-const query = new SolanaQueryBuilder()
+const query = solanaQuery()
   .addFields({
     block: { number: true, timestamp: true },
     transaction: { transactionIndex: true, signatures: true },
@@ -257,12 +257,12 @@ The Pipes SDK supports Hyperliquid fills natively via `@subsquid/pipes/hyperliqu
 
 **Import:**
 ```typescript
-import { hyperliquidFillsPortalSource, HyperliquidFillsQueryBuilder } from '@subsquid/pipes/hyperliquid'
+import { hyperliquidFillsPortalStream, hyperliquidFillsQuery } from '@subsquid/pipes/hyperliquid'
 ```
 
 **Query builder pattern:**
 ```typescript
-const query = new HyperliquidFillsQueryBuilder()
+const query = hyperliquidFillsQuery()
   .addRange({ from: 920000000 })
   .addFields({
     block: { number: true, timestamp: true },
@@ -279,9 +279,9 @@ const query = new HyperliquidFillsQueryBuilder()
 
 **Choosing a start block:** Blocks increment at ~1/second. Use `current_block - (days × 86400)` to estimate. For a 7-day window, subtract ~604,800 from the current head block. A 7-day BTC/ETH/SOL sync yields ~6M fills in ~2-3 minutes.
 
-**Source (SDK 1.0.0-alpha.1+):**
+**Source (SDK 1.0+):**
 ```typescript
-await hyperliquidFillsPortalSource({
+await hyperliquidFillsPortalStream({
   id: 'hl-perps-fills',  // required unique pipe ID
   portal: 'https://portal.sqd.dev/datasets/hyperliquid-fills',
   outputs: query,  // query builder passed as outputs (replaces old `query` field)
@@ -312,7 +312,7 @@ await hyperliquidFillsPortalSource({
 ```
 
 **Key differences from EVM indexers:**
-- No `evmDecoder` — use `HyperliquidFillsQueryBuilder` + `.pipe()` directly
+- No `evmDecoder` — use `hyperliquidFillsQuery()` + `.pipe()` directly
 - Dataset starts at block **750,000,000** (not block 0)
 - Timestamps are in **milliseconds**. Use `new Date(block.header.timestamp).toISOString()` for ClickHouse (with `date_time_input_format: 'best_effort'`). Unlike EVM indexers, you do NOT divide by 1000 — the ISO string approach handles it.
 - `side` is `'B'` (buy) or `'S'` (sell) — single character codes. The pipe transform maps these to `'Buy'`/`'Sell'` for ClickHouse, so SQL queries use the mapped values.
@@ -383,6 +383,207 @@ export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 ```
 
 If you cannot switch Node versions, the indexer may still work for smaller syncs. The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks, v25 often works.
+
+## SDK 1.0 Key Features
+
+### Time-Based Ranges
+
+Ranges now accept ISO date strings and `Date` objects instead of block numbers. Dates are auto-resolved to block numbers via the Portal API:
+
+```typescript
+evmDecoder({
+  range: { from: '2024-01-01' },  // ISO date string → resolved to block number
+  events: { transfers: erc20.events.Transfer },
+})
+
+// Date objects work too
+evmDecoder({
+  range: { from: new Date('2024-01-01'), to: new Date('2024-02-01') },
+  events: { ... },
+})
+
+// Formatted block numbers
+evmDecoder({ range: { from: '18_908_900' }, ... })  // underscores OK
+
+// Latest block
+evmDecoder({ range: { from: 'latest' }, ... })  // only for `from`
+```
+
+**Validation:** Inverted ranges (`from` > `to`) and unresolvable timestamps throw `BlockRangeConfigurationError` (E0002).
+
+### `defineAbi` — Use JSON ABIs Without Codegen
+
+`defineAbi()` converts a standard JSON ABI into decoder objects at runtime — no `squid-evm-typegen` step needed:
+
+```typescript
+import erc20Json from './erc20.json'
+import { defineAbi } from '@subsquid/pipes'
+
+const erc20 = defineAbi(erc20Json)
+
+evmDecoder({
+  events: {
+    transfers: erc20.events.Transfer,
+    approvals: erc20.events.Approval,
+  },
+})
+```
+
+Accepts: plain ABI array, `as const` literal (for full type inference), or Hardhat/Foundry artifact with `.abi` field. Uses `@subsquid/evm-codec` (10x faster than viem).
+
+### Query Builder Shorthands
+
+Factory functions replace `new *QueryBuilder()`:
+
+| Old | New |
+|-----|-----|
+| `new EvmQueryBuilder()` | `evmQuery()` |
+| `new SolanaQueryBuilder()` | `solanaQuery()` |
+| `new HyperliquidFillsQueryBuilder()` | `hyperliquidFillsQuery()` |
+
+### Typed Error System
+
+All framework errors carry unique codes linking to docs:
+
+| Error | Code | When |
+|-------|------|------|
+| `DefaultPipeIdError` | E0001 | `.pipeTo()` called without `id` on source |
+| `BlockRangeConfigurationError` | E0002 | Inverted range, invalid date with `'latest'`, unresolvable timestamp |
+
+### Testing with `@subsquid/pipes/testing/evm`
+
+Test pipe logic end-to-end without hitting a real portal. The testing library provides:
+
+- **`encodeEvent`** — encode events with full type inference from viem ABIs
+- **`mockBlock`** — build mock blocks with auto-generated metadata (number, hash, timestamp)
+- **`evmPortalMockStream`** — spin up a mock portal HTTP server
+- **`resetMockBlockCounter`** — reset block numbering between tests
+
+**Install:** Requires `vitest` and `viem` as dev dependencies.
+
+**Basic test pattern:**
+
+```typescript
+import { commonAbis, evmDecoder, evmPortalStream } from '@subsquid/pipes/evm'
+import {
+  type MockPortal,
+  encodeEvent,
+  evmPortalMockStream,
+  mockBlock,
+  resetMockBlockCounter,
+} from '@subsquid/pipes/testing/evm'
+
+// Helper to collect all stream output
+async function readAll<T>(stream: AsyncIterable<{ data: T[] }>): Promise<T[]> {
+  const res: T[] = []
+  for await (const chunk of stream) {
+    res.push(...chunk.data)
+  }
+  return res
+}
+
+const ERC20_ABI = [
+  {
+    type: 'event' as const,
+    name: 'Transfer',
+    inputs: [
+      { name: 'from', type: 'address', indexed: true },
+      { name: 'to', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256', indexed: false },
+    ],
+  },
+] as const
+
+const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' as const
+const ALICE = '0x7a250d5630b4cf539739df2c5dacb4c659f2488d' as const
+const BOB = '0xc82e11e709deb68f3631fc165ebd8b4e3fc3d18f' as const
+```
+
+**Test 1: Decode events from mock blocks**
+
+```typescript
+let portal: MockPortal
+
+beforeEach(() => resetMockBlockCounter())
+afterEach(async () => await portal?.close())
+
+it('should decode ERC20 transfers', async () => {
+  // 1. Encode events — args are fully typed from the ABI
+  const transfer1 = encodeEvent({
+    abi: ERC20_ABI,
+    eventName: 'Transfer',
+    address: USDC,
+    args: { from: ALICE, to: BOB, value: 1_000_000n },
+  })
+
+  // 2. Build mock blocks — metadata is auto-generated
+  portal = await evmPortalMockStream({
+    blocks: [
+      mockBlock({ transactions: [{ logs: [transfer1] }] }),
+    ],
+  })
+
+  // 3. Create pipe exactly as production, but with mock portal URL
+  const stream = evmPortalStream({
+    id: 'test',
+    portal: portal.url,
+    outputs: evmDecoder({
+      range: { from: 0, to: 1 },
+      events: { transfers: commonAbis.erc20.events.Transfer },
+    }),
+  }).pipe((batch) => batch.transfers)
+
+  // 4. Collect and assert
+  const transfers = await readAll(stream)
+  expect(transfers).toHaveLength(1)
+  expect(transfers[0].event.from).toBe(ALICE)
+  expect(transfers[0].event.value).toBe(1_000_000n)
+  expect(transfers[0].contract).toBe(USDC)
+})
+```
+
+**Test 2: Custom pipe transformations**
+
+```typescript
+it('should test custom transformations', async () => {
+  const transfer = encodeEvent({
+    abi: ERC20_ABI, eventName: 'Transfer', address: USDC,
+    args: { from: ALICE, to: BOB, value: 2_000_000n },
+  })
+
+  portal = await evmPortalMockStream({
+    blocks: [mockBlock({ transactions: [{ logs: [transfer] }] })],
+  })
+
+  // Chain .pipe() transforms — same as production code
+  const stream = evmPortalStream({
+    id: 'test',
+    portal: portal.url,
+    outputs: evmDecoder({
+      range: { from: 0, to: 1 },
+      events: { transfers: commonAbis.erc20.events.Transfer },
+    }),
+  })
+    .pipe((batch) => batch.transfers)
+    .pipe((transfers) =>
+      transfers.map((t) => ({
+        from: t.event.from,
+        to: t.event.to,
+        amount: Number(t.event.value) / 1e6,
+      })),
+    )
+
+  const results = await readAll(stream)
+  expect(results[0]).toEqual({ from: ALICE, to: BOB, amount: 2 })
+})
+```
+
+**Key patterns:**
+- `encodeEvent` accepts `abi`, `eventName`, `address`, and typed `args`
+- `mockBlock` auto-generates `number`, `hash`, `timestamp` — call `resetMockBlockCounter()` in `beforeEach`
+- `evmPortalMockStream` returns `{ url, close() }` — use `portal.url` with `evmPortalStream`
+- Chain `.pipe()` on the stream to test transformations
+- Multiple event types: pass multiple events in `events: { transfers: ..., approvals: ... }` and access `batch.transfers`, `batch.approvals`
 
 ## How to Use the CLI
 
@@ -847,18 +1048,18 @@ events: {
 
 ### Factory Pattern
 
-Track dynamically created contracts (e.g., Uniswap pools, MetaMorpho vaults). Use `factory()` inside the `contracts` field of `evmDecoder`:
+Track dynamically created contracts (e.g., Uniswap pools, MetaMorpho vaults). Use `contractFactory()` inside the `contracts` field of `evmDecoder`:
 
 ```typescript
-import { evmDecoder, factory, factorySqliteDatabase } from '@subsquid/pipes/evm'
+import { evmDecoder, contractFactory, contractFactoryStore } from '@subsquid/pipes/evm'
 
 const swaps = evmDecoder({
   range: { from: '12,369,621' },
-  contracts: factory({
+  contracts: contractFactory({
     address: ['0x1f98431c8ad98523631ae4a59f267346ea31f984'],
     event: factoryEvents.PoolCreated,
-    parameter: 'pool',
-    database: await factorySqliteDatabase({ path: './factory-pools.sqlite' }),
+    childAddressField: 'pool',
+    database: await contractFactoryStore({ path: './factory-pools.sqlite' }),
   }),
   events: {
     swaps: poolEvents.Swap,
@@ -875,7 +1076,7 @@ const swaps = evmDecoder({
 **Accessing factory event metadata in `.pipe()`:**
 Each decoded event includes a `factory` property with the creation event's data:
 ```typescript
-.pipe(({ deposits }) => ({
+.pipe((deposits) => ({
   deposits: deposits.map((d) => ({
     vault: d.contract,                    // child contract address
     vaultName: d.factory?.event.name ?? '',  // from creation event
@@ -925,11 +1126,11 @@ The `uniswapV3Swaps` template uses the factory pattern for Uniswap pools, but yo
    ```
 5. **Wire up the factory pattern** — replace the Uniswap-specific values with your protocol's:
    ```typescript
-   contracts: factory({
+   contracts: contractFactory({
      address: ['<FACTORY_ADDRESS>'],
      event: factoryEvents.YourCreationEvent,  // e.g., CreateMetaMorpho
-     parameter: 'childAddress',                // event param with child address
-     database: await factorySqliteDatabase({ path: './your-factory.sqlite' }),
+     childAddressField: 'childAddress',        // event param with child address
+     database: await contractFactoryStore({ path: './your-factory.sqlite' }),
    }),
    events: {
      yourEvents: childContractEvents.YourEvent,  // events on child contracts
@@ -985,7 +1186,7 @@ const reallocations = evmDecoder({
 Pass multiple named decoders as `outputs` to run them in a single pipeline (replaces old `pipeComposite`):
 
 ```typescript
-const stream = evmPortalSource({
+const stream = evmPortalStream({
   id: 'my-indexer',
   portal: '...',
   outputs: {
@@ -1000,7 +1201,7 @@ const stream = evmPortalSource({
 evmDecoder({ contracts: ['0xABC...', '0xDEF...'], events: { ... } })  // ✅ correct
 evmDecoder({ contracts: [{ address: ['0xABC...'] }], events: { ... } })  // ❌ wrong — crashes with "contract.toLowerCase is not a function"
 ```
-The object format is ONLY for the `factory()` helper pattern.
+The object format is ONLY for the `contractFactory()` helper pattern.
 
 ### Decoded Event Field Access in `.pipe()`
 
@@ -1070,14 +1271,14 @@ If you write a custom `.pipe()` transform (e.g., to access factory metadata), yo
 
 ```typescript
 // WRONG — produces 1970 dates in ClickHouse
-.pipe(({ deposits }) => ({
+.pipe((deposits) => ({
   deposits: deposits.map((d) => ({
     timestamp: d.timestamp.getTime(),  // milliseconds! ClickHouse stores as year 1970
   })),
 }))
 
 // CORRECT — produces proper dates
-.pipe(({ deposits }) => ({
+.pipe((deposits) => ({
   deposits: deposits.map((d) => ({
     timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds
   })),
