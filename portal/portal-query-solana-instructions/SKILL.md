@@ -87,7 +87,50 @@ curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
 - `d4` - First 4 bytes of data
 - `d8` - First 8 bytes of data (most common for Anchor programs)
 
-**Computing discriminator (Anchor):**
+### Recommended: Use `@subsquid/solana-typegen` for Discriminators
+
+**Never compute discriminators manually.** Use the Solana typegen tool to generate typed decoders from IDLs — it provides correct discriminators automatically:
+
+```bash
+# Install
+npm install @subsquid/solana-typegen
+
+# Generate from on-chain IDL (Anchor programs)
+npx squid-solana-typegen src/abi <PROGRAM_ID>#<program_name>
+
+# Generate from local IDL file
+npx squid-solana-typegen src/abi ./idl/program.json
+```
+
+**Generated exports:**
+```typescript
+import * as myProgram from './abi/myProgram'
+
+myProgram.programId              // Program public key
+myProgram.instructions.swap.d8   // Correct d8 discriminator
+myProgram.instructions.swap.decode(ins)  // Typed decoder → { accounts, data }
+myProgram.instructions.swap.accountSelection({ pool: ['<address>'] })  // Account filters
+```
+
+Use these in Portal queries:
+```json
+{
+  "programId": ["<from myProgram.programId>"],
+  "d8": ["<from myProgram.instructions.swap.d8>"]
+}
+```
+
+And for decoding raw instruction data in your indexer's `.pipe()` transform:
+```typescript
+const decoded = myProgram.instructions.swap.decode(ins)
+// decoded.accounts — typed account addresses by name
+// decoded.data — typed instruction parameters
+```
+
+### Manual Discriminator Computation (Fallback Only)
+
+Only use this when typegen fails (non-Anchor programs, custom serialization):
+
 ```typescript
 import { sha256 } from '@noble/hashes/sha256';
 
@@ -97,7 +140,7 @@ function getDiscriminator(name: string): string {
 }
 ```
 
-**⚠️ Important:** Discriminator values are computed from the actual program IDL and may differ between program versions. Always verify against the specific program version.
+**⚠️ Important:** Discriminator values are computed from the actual program IDL and may differ between program versions. Always verify against the specific program version or use typegen which reads the correct IDL.
 
 ---
 
@@ -333,12 +376,14 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 - **portal-dataset-discovery** - Find correct Solana dataset name
 - **portal-query-evm-logs** - EVM equivalent (for comparison)
+- **pipes-new-indexer** - Full Solana indexer scaffolding with `@subsquid/solana-typegen` workflow
 
 ---
 
 ## Additional Resources
 
 - **API Documentation:** https://beta.docs.sqd.dev/api/catalog/solana/stream
+- **[Solana Typegen](https://docs.sqd.ai/solana-indexing/sdk/typegen/)** - Generate typed decoders from IDLs (discriminators, account selection, instruction decoding)
 - **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API Solana querying
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
 - **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** - Complete Solana query specification
