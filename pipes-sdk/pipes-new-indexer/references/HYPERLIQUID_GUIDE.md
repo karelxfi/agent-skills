@@ -355,6 +355,57 @@ Hyperliquid uses **uppercase symbol names** as coin identifiers. Common tickers 
 SELECT coin, count() as fills FROM hl_fills GROUP BY coin ORDER BY fills DESC
 ```
 
+## TradFi Asset Classification
+
+Hyperliquid uniquely lists traditional finance assets (equities, commodities, ETFs) alongside crypto perpetuals. When building indexers that need to distinguish asset classes, use this classification logic:
+
+### Classification rules
+
+| Pattern | Category | Examples |
+|---------|----------|----------|
+| `cash:*` prefix | TradFi (legacy) | `cash:TSLA`, `cash:GOLD`, `cash:USA500` |
+| `xyz:*` prefix | TradFi (newer) | `xyz:GOLD`, `xyz:PLATINUM`, `xyz:XYZ100` |
+| `@NNN` format | HIP-3 permissionless | `@230`, `@107`, `@156` |
+| Plain name (known TradFi) | TradFi (no prefix) | `HOOD`, `GOOGL`, `TSM`, `NATGAS`, `PLATINUM`, `EWY`, `EWJ` |
+| Plain name (everything else) | Crypto | `BTC`, `ETH`, `SOL`, `HYPE`, `kPEPE` |
+
+### Boilerplate classification function
+
+```typescript
+// Known plain-name TradFi tickers on Hyperliquid (no cash:/xyz: prefix)
+const TRADFI_PLAIN_TICKERS = new Set([
+  'HOOD', 'GOOGL', 'TSM', 'NATGAS', 'PLATINUM',
+  'EWY', 'EWJ', 'CRWV', 'SNDK', 'SKHX',
+])
+
+function classifyAsset(coin: string): 'tradfi' | 'crypto' | 'hip3' {
+  if (coin.startsWith('@')) return 'hip3'
+  if (coin.startsWith('cash:') || coin.startsWith('xyz:')) return 'tradfi'
+  if (TRADFI_PLAIN_TICKERS.has(coin)) return 'tradfi'
+  return 'crypto'
+}
+
+// Use in .pipe() transform:
+// asset_class: classifyAsset(fill.coin),
+```
+
+### Dashboard JavaScript version
+
+```javascript
+var TRADFI_PLAIN = ['HOOD','GOOGL','TSM','NATGAS','PLATINUM','EWY','EWJ','CRWV','SNDK','SKHX'];
+function classifyAsset(coin) {
+  if (coin.startsWith('@')) return 'hip3';
+  if (coin.startsWith('cash:') || coin.startsWith('xyz:')) return 'tradfi';
+  if (TRADFI_PLAIN.indexOf(coin) !== -1) return 'tradfi';
+  return 'crypto';
+}
+```
+
+### Notes
+- The TradFi plain-ticker list is not exhaustive and grows as Hyperliquid adds new markets. When building a TradFi-focused indexer, run a broad discovery query first and manually classify any new plain tickers.
+- HIP-3 (`@NNN`) markets can be either crypto or TradFi — the number alone does not indicate asset class. Treat them as a separate category or classify individually if needed.
+- TradFi markets typically have lower volume and fewer fills than major crypto pairs. Expect 10-100x fewer fills for `GOOGL` compared to `BTC`.
+
 ## Choosing a Start Block
 
 The Hyperliquid dataset starts at block **750,000,000**. Blocks increment at roughly **~1 block per second** (not exactly, but close enough for estimation).

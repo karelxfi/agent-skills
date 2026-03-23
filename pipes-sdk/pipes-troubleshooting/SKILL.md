@@ -421,9 +421,40 @@ npm run dev
 
 **If you can't switch versions**: The zstd bug tends to crash on large syncs (millions of blocks). For quick tests with recent blocks (~100K), v25 often works fine.
 
+**Hyperliquid-specific note**: Node.js v25 crashes are especially common during large Hyperliquid fills syncs (50M+ blocks). However, checkpoint/resume works reliably — the indexer will pick up from where it crashed. If switching Node versions is not feasible, let it crash and restart repeatedly until sync completes. Each restart resumes from the last checkpoint.
+
 **Prevention**: Always use Node.js LTS (v20 or v22) for Pipes SDK projects.
 
-### Error Pattern 10: Hyperliquid addFill Missing Range
+### Error Pattern 10: Hyperliquid Validation — SDK vs Portal Block Batching
+
+**Symptoms**: validate.ts Portal cross-reference shows wildly different fill counts compared to ClickHouse, even though spot-checks pass and data looks correct.
+
+**Diagnosis**: The Pipes SDK batches Hyperliquid blocks differently from raw Portal queries. The SDK may merge, split, or reorder blocks internally for efficiency. A Portal query for `fromBlock: X, toBlock: Y` may return a different number of fills than what the SDK indexed for the same nominal range, because the SDK's actual block boundaries don't align 1:1 with Portal's.
+
+**This is NOT a bug.** The data is correct — the counting methodology differs.
+
+**Fix — use spot-checks as primary truth verification:**
+```typescript
+// DON'T rely on block-range count comparison for Hyperliquid:
+// ClickHouse count: 15,234  vs  Portal count: 14,891  → misleading 2.3% diff
+
+// DO use transaction-level spot-checks as primary verification:
+// 1. Pick 3-5 specific fills from ClickHouse (by hash or tid)
+// 2. Query Portal for the same block
+// 3. Verify field-level match: coin, px, sz, side, dir, user
+```
+
+**validate.ts pattern for Hyperliquid:**
+```typescript
+// Phase 2 (Portal cross-ref): Use as a SANITY CHECK only, not exact match
+// Accept wider tolerance (20-30%) or skip count comparison entirely
+// Phase 3 (Spot-checks): This is the PRIMARY truth verification
+// Pick fills from ClickHouse, query Portal for same block, verify fields match exactly
+```
+
+**Prevention**: When writing validate.ts for Hyperliquid indexers, make spot-checks the authoritative verification and treat count comparisons as approximate sanity checks only.
+
+### Error Pattern 10b: Hyperliquid addFill Missing Range
 
 **Symptoms**:
 ```
