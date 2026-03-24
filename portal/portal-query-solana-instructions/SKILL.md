@@ -398,6 +398,30 @@ When you need `include_transaction_token_balances: true` to track SPL balance ch
 
 ---
 
+## Gotchas & Patterns from Production
+
+### LST Tracking: Use Token Mint/Burn, Not Stake Pool Instructions
+For liquid staking tokens (jupSOL, dSOL, bSOL), DON'T track SPL Stake Pool instructions directly:
+- Operations route through wrapper programs (Sanctum, Jupiter) as CPI calls
+- Filtering by a0 = pool account results in very sparse matches = extremely slow scan
+- Multiple stake pool program deployments exist
+
+**Instead:** Track SPL Token MintTo/Burn for the LST mint address. Every deposit mints, every withdrawal burns.
+- MintTo/MintToChecked: filter with `a0: [LST_MINT]`
+- Burn/BurnChecked: filter with `a1: [LST_MINT]` (note: a1 not a0!)
+
+### Anchor d8 Collision Warning
+Different programs can share the same d8 for identically-named instructions (e.g., `deposit`). Always combine d8 with programId filter.
+
+### Concurrent Indexer Rate Limiting
+Portal returns 429 when 3+ Solana indexers run simultaneously. The Pipes SDK retries automatically with backoff, but ETAs increase 2-3x. Limit to 2-3 concurrent Solana indexers for predictable sync times.
+
+### Scan Speed
+Solana scans at ~200-500 blocks/sec regardless of filter specificity. Plan for:
+- 3M slots (405M→408M): 2-4 hours
+- 38M slots (370M→408M): 10-20 hours
+- Node v25 may crash mid-sync; the SDK resumes from checkpoint on restart.
+
 ## Related Skills
 
 - **portal-dataset-discovery** - Find correct Solana dataset name
